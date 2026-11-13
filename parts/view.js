@@ -136,6 +136,40 @@
     )
   }
 
+  /* ------------------------------------------------------ live run merging */
+
+  /**
+   * Merge one `runStatus` node map into canvas results (§13.2): pending nodes
+   * are skipped (so an upcoming node keeps its previous `running` marker),
+   * running nodes show the running state, finished nodes take the full result.
+   */
+  function mergeRunNodes(previous, nodes) {
+    const next = Object.assign({}, previous || {})
+    if (!nodes || typeof nodes !== 'object') return next
+    for (const nodeId of Object.keys(nodes)) {
+      const entry = nodes[nodeId]
+      if (!entry || typeof entry !== 'object') continue
+      if (entry.status === 'pending') {
+        next[nodeId] = { status: 'pending' }
+        continue
+      }
+      if (entry.status === 'running') {
+        next[nodeId] = { status: 'running' }
+        continue
+      }
+      next[nodeId] = {
+        status: entry.status === 'error' ? 'error' : 'done',
+        images: Array.isArray(entry.images) ? entry.images : [],
+        text: typeof entry.text === 'string' ? entry.text : '',
+        video: entry.video == null ? null : entry.video,
+        error: typeof entry.error === 'string' ? entry.error : '',
+        ms: Number(entry.ms) || 0,
+        ...(entry.skipped ? { skipped: true } : {}),
+      }
+    }
+    return next
+  }
+
   /* --------------------------------------------------------- canvas view */
 
   /**
@@ -164,6 +198,44 @@
     const runToken = React.useRef(0)
     const loadedRef = React.useRef(false)
     const canvasKey = sessionId ? 'session:' + sessionId : 'session:default'
+    /* Run-record polling (§13.2): one interval at a time, always torn down. */
+    const pollTimer = React.useRef(null)
+    const pollSeq = React.useRef(0)
+    const stopPolling = React.useCallback(() => {
+      // Invalidate in-flight poll responses so a late reply cannot overwrite
+      // the authoritative `results` right after the run resolves.
+      pollSeq.current += 1
+      if (pollTimer.current !== null) {
+        clearInterval(pollTimer.current)
+        pollTimer.current = null
+      }
+    }, [])
+    const startPolling = React.useCallback(
+      (token) => {
+        stopPolling()
+        pollTimer.current = setInterval(() => {
+          if (token !== runToken.current) {
+            stopPolling()
+            return
+          }
+          const seq = ++pollSeq.current
+          V.rpc('runStatus', { key: canvasKey, sessionId: sessionId || undefined })
+            .then((value) => {
+              if (token !== runToken.current) return
+              // Drop an out-of-order response: a later poll already applied.
+              if (seq !== pollSeq.current) return
+              const run = value && value.run
+              if (!run || !run.nodes) return
+              setResults((previous) => mergeRunNodes(previous, run.nodes))
+            })
+            .catch(() => {
+              /* a failed poll must not interrupt the running workflow */
+            })
+        }, 500)
+      },
+      [canvasKey, sessionId, stopPolling],
+    )
+    React.useEffect(() => stopPolling, [stopPolling])
 
     /* Load node definitions, saved canvas and host state on mount. */
     React.useEffect(() => {
@@ -255,6 +327,7 @@
       const seeded = {}
       for (const node of workflow.nodes) seeded[node.id] = { status: 'running' }
       setResults(seeded)
+      startPolling(token)
       try {
         const value = await V.rpc('runWorkflow', { key: canvasKey, workflow, sessionId: sessionId || undefined })
         if (token !== runToken.current) return
@@ -269,7 +342,10 @@
           return next
         })
       } finally {
-        if (token === runToken.current) setRunning(false)
+        if (token === runToken.current) {
+          stopPolling()
+          setRunning(false)
+        }
       }
     }
 
@@ -280,6 +356,7 @@
       setRunning(true)
       setRunError('')
       setResults((prev) => Object.assign({}, prev, { [nodeId]: { status: 'running' } }))
+      startPolling(token)
       try {
         const value = await V.rpc('runNode', { key: canvasKey, nodeId, workflow, sessionId: sessionId || undefined })
         if (token !== runToken.current) return
@@ -290,12 +367,16 @@
         setRunError(V.messageOf(err))
         setResults((prev) => Object.assign({}, prev, { [nodeId]: { status: 'error', error: V.messageOf(err) } }))
       } finally {
-        if (token === runToken.current) setRunning(false)
+        if (token === runToken.current) {
+          stopPolling()
+          setRunning(false)
+        }
       }
     }
 
     const stop = () => {
       runToken.current += 1
+      stopPolling()
       setRunning(false)
       setNotice('已停止等待当前运行结果（云端请求可能仍在服务端完成）。')
     }
@@ -372,16 +453,6 @@
           h('span', { style: { flex: 1 } }),
           saving ? h('span', { className: 'vcg-subtitle' }, '保存中…') : lastSaved ? h('span', { className: 'vcg-subtitle' }, '已保存 ' + V.formatTime(lastSaved)) : null,
           h(
-            Button,
-            { variant: 'primary', size: 'sm', onClick: runAll, disabled: running || !workflow, icon: running ? undefined : 'play' },
-            running ? '运行中…' : '运行工作流',
-          ),
-          h(
-            Button,
-            { size: 'sm', onClick: debugRun, disabled: debugBusy || running || !workflow, icon: debugBusy ? undefined : 'check', title: 'Debug 运行：只校验模型能否加载、工作流/节点完整性与安全性，不生成内容' },
-            debugBusy ? '校验中…' : 'Debug 运行',
-          ),
-          h(
             IconButton,
             { label: fullscreen ? '退出全屏' : '全屏画布', title: fullscreen ? '退出全屏（Esc）' : '全屏画布', onClick: toggleFullscreen },
             h(Glyph, { name: fullscreen ? 'close' : 'fit', size: 15 }),
@@ -422,6 +493,8 @@
                 onChange,
                 onRunNode: runNode,
                 onRunAll: runAll,
+                onDebugRun: debugRun,
+                debugBusy,
                 onStop: stop,
                 running,
                 readOnly: false,

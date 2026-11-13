@@ -141,8 +141,18 @@
       'vcg: studio page',
     )
 
-    ctx.effect(
-      () =>
+    /*
+     * §13.4 专业模式门控：节点仓库侧栏只在 proMode === true 时注册。
+     * 初始 store.state 可能为 null（V.refresh 异步），此时先隐藏；
+     * state 到达后由 listeners 通知，切到 true 注册、切回 false 撤销。
+     */
+    let repoSlotDispose = null
+    let repoSlotsRegistered = false
+    const wantsRepoSlots = () => Boolean(V.store.state && V.store.state.proMode === true)
+    const registerRepoSlots = () => {
+      if (repoSlotsRegistered) return
+      repoSlotsRegistered = true
+      const disposers = [
         slots.inject('sidebar.panellist', () =>
           slots.register(
             {
@@ -154,11 +164,6 @@
             guard(V.RepoPanelIcon || V.PanelIcon, '节点仓库图标'),
           ),
         ),
-      'vcg: node repository panel',
-    )
-
-    ctx.effect(
-      () =>
         slots.inject('main', () =>
           slots.register(
             {
@@ -168,8 +173,41 @@
             guard(V.NodeRepoPage, 'VCG 节点工作流仓库'),
           ),
         ),
-      'vcg: node repository page',
-    )
+      ].filter((dispose) => typeof dispose === 'function')
+      repoSlotDispose = () => {
+        for (const dispose of disposers.splice(0)) {
+          try {
+            dispose()
+          } catch (error) {
+            console.warn('[vcg] node repository slot dispose failed', error)
+          }
+        }
+      }
+    }
+    const unregisterRepoSlots = () => {
+      repoSlotsRegistered = false
+      const dispose = repoSlotDispose
+      repoSlotDispose = null
+      if (typeof dispose === 'function') {
+        try {
+          dispose()
+        } catch (error) {
+          console.warn('[vcg] node repository slot dispose failed', error)
+        }
+      }
+    }
+    const syncRepoSlots = () => {
+      if (wantsRepoSlots()) registerRepoSlots()
+      else unregisterRepoSlots()
+    }
+    V.store.listeners.add(syncRepoSlots)
+    ctx.effect(() => {
+      syncRepoSlots()
+      return () => {
+        V.store.listeners.delete(syncRepoSlots)
+        unregisterRepoSlots()
+      }
+    }, 'vcg: node repository (proMode gate)')
 
     ctx.effect(
       () =>

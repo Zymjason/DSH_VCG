@@ -101,6 +101,8 @@ class VcgStudio {
       logger: this.log,
     })
     this.engine = new Engine(this)
+    /** Live run records keyed by canvas key (§13.1), polled by the UI. */
+    this.runs = new Map()
   }
 
   /* -------------------------------------------------------------- lifecycle */
@@ -153,6 +155,7 @@ class VcgStudio {
         /* ignore */
       }
     }
+    this.runs.clear()
     void this.persist()
   }
 
@@ -915,17 +918,151 @@ class VcgStudio {
     }
   }
 
+  /** Canvas key used by both live run records and the saved workbook. */
+  resolveCanvasKey(args = {}) {
+    const sessionId = String(args?.sessionId ?? '').trim()
+    return String(args?.key ?? '').trim() || (sessionId !== '' ? `session:${sessionId}` : '')
+  }
+
+  /**
+   * Create (and store) the live run record for one canvas key (§13.1).
+   * The client polls `runStatus` for this record while `running`.
+   */
+  createRunRecord(key, runId) {
+    const record = {
+      runId,
+      key,
+      status: 'running',
+      startedAt: nowIso(),
+      finishedAt: '',
+      order: [],
+      currentNodeId: '',
+      error: '',
+      nodes: {},
+    }
+    this.runs.set(key, record)
+    // Bounded memory: keep the most recent records only (running ones stay).
+    if (this.runs.size > 20) {
+      for (const [candidateKey, candidate] of this.runs) {
+        if (this.runs.size <= 20) break
+        if (candidateKey === key || candidate.status === 'running') continue
+        this.runs.delete(candidateKey)
+      }
+    }
+    return record
+  }
+
+  /** Normalize one engine result into the record node shape (§13.1). */
+  runNodeRecord(result) {
+    const value = isPlainObject(result) ? result : {}
+    return {
+      status: value.status === 'error' ? 'error' : value.status === 'running' ? 'running' : 'done',
+      ms: Number.isFinite(value.ms) ? value.ms : 0,
+      images: Array.isArray(value.images) ? value.images : [],
+      text: typeof value.text === 'string' ? value.text : '',
+      video: value.video ?? null,
+      error: typeof value.error === 'string' ? value.error : '',
+      skipped: value.skipped === true,
+    }
+  }
+
+  /** Apply one Engine progress event to a run record (§13.1). */
+  applyRunEvent(record, event) {
+    if (!record || !isPlainObject(event)) return
+    const nodeId = typeof event.nodeId === 'string' ? event.nodeId : ''
+    switch (event.type) {
+      case 'run-start': {
+        record.order = Array.isArray(event.order) ? event.order.slice() : []
+        for (const id of record.order) {
+          if (!record.nodes[id]) record.nodes[id] = { status: 'pending', ms: 0, images: [], text: '', video: null, error: '', skipped: false }
+        }
+        break
+      }
+      case 'node-start': {
+        if (nodeId === '') break
+        record.nodes[nodeId] = { status: 'running', ms: 0, images: [], text: '', video: null, error: '', skipped: false }
+        record.currentNodeId = nodeId
+        break
+      }
+      case 'node-done': {
+        if (nodeId === '') break
+        record.nodes[nodeId] = this.runNodeRecord(event.result)
+        if (record.currentNodeId === nodeId) record.currentNodeId = ''
+        break
+      }
+      case 'node-error': {
+        if (nodeId === '') break
+        record.nodes[nodeId] = {
+          status: 'error',
+          ms: Number.isFinite(event.ms) ? event.ms : 0,
+          images: [],
+          text: '',
+          video: null,
+          error: String(event.error ?? ''),
+          skipped: false,
+        }
+        if (record.currentNodeId === nodeId) record.currentNodeId = ''
+        break
+      }
+      case 'run-done': {
+        record.status = event.ok === false || event.error ? 'error' : 'done'
+        record.error = String(event.error ?? '')
+        record.finishedAt = nowIso()
+        record.currentNodeId = ''
+        break
+      }
+      default:
+        break
+    }
+  }
+
+  /** Record a thrown run failure (validation / config / abort). */
+  failRunRecord(record, error) {
+    if (!record) return
+    record.status = 'error'
+    record.finishedAt = nowIso()
+    record.error = messageOf(error)
+    record.currentNodeId = ''
+  }
+
+  /** Finalize a record when the engine returned without a run-done event. */
+  finishRunRecord(record, value) {
+    if (!record || record.status !== 'running') return
+    const result = isPlainObject(value) ? value : {}
+    record.status = result.error || result.result?.status === 'error' ? 'error' : 'done'
+    record.error = String(result.error ?? result.result?.error ?? '')
+    record.finishedAt = nowIso()
+    record.currentNodeId = ''
+  }
+
+  /** §13.1 RPC: latest run record for one canvas key (read-only). */
+  runStatus(args = {}) {
+    const key = this.resolveCanvasKey(args)
+    return { run: this.runs.get(key) ?? null }
+  }
+
   async runWorkflow(args = {}) {
     this.ensureLocalConfigured()
     const sessionId = String(args?.sessionId ?? '').trim()
-    const key = String(args?.key ?? '').trim() || (sessionId !== '' ? `session:${sessionId}` : '')
-    return this.engine.run({
-      key,
-      workflow: args?.workflow,
-      sessionId,
-      baseDir: args?.baseDir,
-      signal: this.abort.signal,
-    })
+    const key = this.resolveCanvasKey(args)
+    const runId = uid('run')
+    const record = this.createRunRecord(key, runId)
+    try {
+      const value = await this.engine.run({
+        key,
+        workflow: args?.workflow,
+        sessionId,
+        baseDir: args?.baseDir,
+        signal: this.abort.signal,
+        runId,
+        onEvent: (event) => this.applyRunEvent(record, event),
+      })
+      this.finishRunRecord(record, value)
+      return value
+    } catch (error) {
+      this.failRunRecord(record, error)
+      throw error
+    }
   }
 
   async runNode(args = {}) {
@@ -933,16 +1070,26 @@ class VcgStudio {
     const nodeId = String(args?.nodeId ?? '').trim()
     if (nodeId === '') throw new Error('缺少要运行的节点 id（nodeId）')
     const sessionId = String(args?.sessionId ?? '').trim()
-    const key = String(args?.key ?? '').trim() || (sessionId !== '' ? `session:${sessionId}` : '')
-    const value = await this.engine.run({
-      key,
-      workflow: args?.workflow,
-      sessionId,
-      baseDir: args?.baseDir,
-      nodeId,
-      signal: this.abort.signal,
-    })
-    return { result: value.result, order: value.order }
+    const key = this.resolveCanvasKey(args)
+    const runId = uid('run')
+    const record = this.createRunRecord(key, runId)
+    try {
+      const value = await this.engine.run({
+        key,
+        workflow: args?.workflow,
+        sessionId,
+        baseDir: args?.baseDir,
+        nodeId,
+        signal: this.abort.signal,
+        runId,
+        onEvent: (event) => this.applyRunEvent(record, event),
+      })
+      this.finishRunRecord(record, value)
+      return { result: value.result, order: value.order }
+    } catch (error) {
+      this.failRunRecord(record, error)
+      throw error
+    }
   }
 
   /* ------------------------------------------------------- debug / repo */
@@ -1294,6 +1441,7 @@ class VcgStudio {
       buildWorkflow: (args) => this.buildWorkflow(args),
       runWorkflow: (args) => this.runWorkflow(args),
       runNode: (args) => this.runNode(args),
+      runStatus: (args) => this.runStatus(args),
       debugWorkflow: (args) => this.debugWorkflow(args),
       listRepoNodes: (args) => this.listRepoNodes(args),
       installRepoNode: (args) => this.installRepoNode(args),

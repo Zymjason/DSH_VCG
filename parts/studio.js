@@ -318,6 +318,37 @@
     return out
   }
 
+  /**
+   * Merge one `runStatus` node map into canvas results (§13.2): pending nodes
+   * are skipped, running nodes show the running state, finished nodes take the
+   * full result. Additive so a single-node run only touches its own subgraph.
+   */
+  function mergeRunNodes(previous, nodes) {
+    const next = Object.assign({}, previous || {})
+    if (!nodes || typeof nodes !== 'object') return next
+    for (const nodeId of Object.keys(nodes)) {
+      const entry = nodes[nodeId]
+      if (!entry || typeof entry !== 'object') continue
+      if (entry.status === 'pending') {
+        next[nodeId] = { status: 'pending' }
+        continue
+      }
+      if (entry.status === 'running') {
+        next[nodeId] = { status: 'running' }
+        continue
+      }
+      next[nodeId] = normalizeRunResult({
+        status: entry.status === 'error' ? 'error' : 'done',
+        images: entry.images,
+        text: entry.text,
+        video: entry.video,
+        error: entry.error,
+        ms: entry.ms,
+      })
+    }
+    return next
+  }
+
   function projectForScope(projects, scopeKey) {
     if (!scopeKey || scopeKey.indexOf('project:') !== 0) return null
     const id = scopeKey.slice('project:'.length)
@@ -538,16 +569,6 @@
           'div',
           { className: 'vcg-row', style: { flexWrap: 'wrap' } },
           h(
-            Button,
-            { variant: 'primary', size: 'sm', onClick: onRunAll, disabled: running || !workflow, icon: running ? undefined : 'play' },
-            running ? '运行中…' : '运行工作流',
-          ),
-          h(
-            Button,
-            { size: 'sm', onClick: debugRun, disabled: debugBusy || running || !workflow, icon: debugBusy ? undefined : 'check', title: 'Debug 运行：只校验模型能否加载、工作流/节点完整性与安全性，不生成内容' },
-            debugBusy ? '校验中…' : 'Debug 运行',
-          ),
-          h(
             IconButton,
             { label: fullscreen ? '退出全屏' : '全屏画布', title: fullscreen ? '退出全屏（Esc）' : '全屏画布', onClick: () => setFullscreen((value) => !value) },
             h(Glyph, { name: fullscreen ? 'close' : 'fit', size: 15 }),
@@ -594,6 +615,8 @@
                   onChange,
                   onRunNode,
                   onRunAll,
+                  onDebugRun: debugRun,
+                  debugBusy,
                   running,
                   readOnly: false,
                   outputDirHint: outputDirHint || '',
@@ -1019,6 +1042,45 @@
     const [aiError, setAiError] = React.useState('')
     const [outputsTick, setOutputsTick] = React.useState(0)
     const okTimer = React.useRef(null)
+    /* Run-record polling (§13.2): one interval at a time, always torn down. */
+    const runToken = React.useRef(0)
+    const pollTimer = React.useRef(null)
+    const pollSeq = React.useRef(0)
+    const stopPolling = React.useCallback(() => {
+      // Invalidate in-flight poll responses so a late reply cannot overwrite
+      // the authoritative `results` right after the run resolves.
+      pollSeq.current += 1
+      if (pollTimer.current !== null) {
+        clearInterval(pollTimer.current)
+        pollTimer.current = null
+      }
+    }, [])
+    const startPolling = React.useCallback(
+      (token) => {
+        stopPolling()
+        pollTimer.current = setInterval(() => {
+          if (token !== runToken.current) {
+            stopPolling()
+            return
+          }
+          const seq = ++pollSeq.current
+          V.rpc('runStatus', { key: scopeKey })
+            .then((value) => {
+              if (token !== runToken.current) return
+              // Drop an out-of-order response: a later poll already applied.
+              if (seq !== pollSeq.current) return
+              const run = value && value.run
+              if (!run || !run.nodes) return
+              setResults((previous) => mergeRunNodes(previous, run.nodes))
+            })
+            .catch(() => {
+              /* a failed poll must not interrupt the running workflow */
+            })
+        }, 500)
+      },
+      [scopeKey, stopPolling],
+    )
+    React.useEffect(() => stopPolling, [stopPolling])
 
     const workflowsAsync = V.useAsync(
       () => V.rpc('listWorkflows').then((result) => asArray(result && result.workflows)),
@@ -1183,16 +1245,19 @@
 
     async function runAll() {
       if (!canvas || running) return
+      const token = ++runToken.current
       setRunning(true)
       setWorkflowError('')
       setWorkflowOk('')
       setRunError('')
+      startPolling(token)
       try {
         const result = await V.rpc('runWorkflow', {
           key: scopeKey,
           workflow: canvas,
           ...(baseDir ? { baseDir } : {}),
         })
+        if (token !== runToken.current) return
         setResults(normalizeRunResults(result && result.results))
         const warnings = asArray(result && result.warnings)
         if (result && result.error) setRunError(String(result.error))
@@ -1200,15 +1265,24 @@
         else showOk(t('stuRunDone'))
         setOutputsTick((tick) => tick + 1)
       } catch (error) {
+        if (token !== runToken.current) return
         setRunError(msgOf(error))
       } finally {
-        setRunning(false)
+        if (token === runToken.current) {
+          stopPolling()
+          setRunning(false)
+        }
       }
     }
 
     async function onRunNode(nodeId) {
-      if (!canvas) return
+      if (!canvas || running) return
+      const token = ++runToken.current
+      setRunning(true)
       setWorkflowError('')
+      setRunError('')
+      setResults((previous) => ({ ...previous, [nodeId]: { status: 'running' } }))
+      startPolling(token)
       try {
         const result = await V.rpc('runNode', {
           key: scopeKey,
@@ -1216,11 +1290,18 @@
           workflow: canvas,
           ...(baseDir ? { baseDir } : {}),
         })
+        if (token !== runToken.current) return
         const nodeResult = normalizeRunResult(result && result.result)
         setResults((previous) => ({ ...previous, [nodeId]: nodeResult }))
         setOutputsTick((tick) => tick + 1)
       } catch (error) {
+        if (token !== runToken.current) return
         setRunError(msgOf(error))
+      } finally {
+        if (token === runToken.current) {
+          stopPolling()
+          setRunning(false)
+        }
       }
     }
 

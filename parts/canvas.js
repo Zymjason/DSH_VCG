@@ -71,10 +71,24 @@
     cvStatusRunning: '运行中',
     cvStatusDone: '已完成',
     cvStatusError: '出错',
+    cvStatusPending: '等待中',
     cvEngineOverride: '已覆盖引擎',
     cvReplaceEdge: '将替换该输入端口已有的连线',
     cvStartNode: '快速添加',
     cvResultEmpty: '完成（无图像输出）',
+    cvDebugRun: 'Debug 运行',
+    cvDebugBusy: '校验中…',
+    cvDebugHint: 'Debug 运行：只校验模型能否加载、工作流/节点完整性与安全性，不生成内容',
+    cvPickerTitle: '添加节点并连接',
+    cvPickerHintOut: '连线已保留：从「{node}」的输出「{port}」拖出，选择节点后自动连接',
+    cvPickerHintIn: '连线已保留：从「{node}」的输入「{port}」拖出，选择节点后自动连接',
+    cvPickerEmpty: '没有可自动连接的节点',
+    cvPickerClose: '关闭',
+    cvPickerInput: '输入',
+    cvPickerOutput: '输出',
+    cvRunProgress: '运行中 {done}/{total}',
+    cvRunFailed: '失败 {failed}',
+    cvRunCurrent: '当前：{node}',
   }
   const enExtra = {
     cvNodeLibrary: 'Node library',
@@ -124,10 +138,24 @@
     cvStatusRunning: 'Running',
     cvStatusDone: 'Done',
     cvStatusError: 'Error',
+    cvStatusPending: 'Waiting',
     cvEngineOverride: 'Engine overridden',
     cvReplaceEdge: 'Replaces the edge already on this input',
     cvStartNode: 'Quick add',
     cvResultEmpty: 'Done (no image output)',
+    cvDebugRun: 'Debug run',
+    cvDebugBusy: 'Validating…',
+    cvDebugHint: 'Debug run: only validates model loadability, workflow/node integrity and safety — no content is generated',
+    cvPickerTitle: 'Add node & connect',
+    cvPickerHintOut: 'Link kept: drag started from output “{port}” of “{node}”; pick a node to connect automatically',
+    cvPickerHintIn: 'Link kept: drag started from input “{port}” of “{node}”; pick a node to connect automatically',
+    cvPickerEmpty: 'No connectable node',
+    cvPickerClose: 'Close',
+    cvPickerInput: 'input',
+    cvPickerOutput: 'output',
+    cvRunProgress: 'Running {done}/{total}',
+    cvRunFailed: 'failed {failed}',
+    cvRunCurrent: 'now: {node}',
   }
   if (typeof V.addDict === 'function') V.addDict(zhExtra, enExtra)
 
@@ -592,6 +620,27 @@
 .vcg-cv-connect-hint{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:4;font-size:11.5px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:999px;padding:4px 12px;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.16);white-space:nowrap}
 .vcg-cv-connect-hint.vcg-cv-invalid{color:var(--dsw-alias-state-error-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 45%,var(--dsw-alias-border-l1))}
 
+/* live run progress in the toolbar (§13.2) */
+.vcg-cv-tb-run{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:280px;font-size:11px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-cv-tb-run::before{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-brand-primary);animation:vcg-cv-breathe 1.8s ease-in-out infinite}
+
+/* -------------------------------------------------- connect picker menu */
+.vcg-cv-picker{position:absolute;z-index:6;width:272px;max-height:min(360px,calc(100% - 16px));display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.22);overflow:hidden;font-size:12px;color:var(--dsw-alias-label-primary)}
+.vcg-cv-picker-head{display:flex;align-items:center;gap:6px;padding:8px 8px 4px 10px;flex:none;color:var(--dsw-alias-brand-primary)}
+.vcg-cv-picker-title{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-cv-picker-hint{font-size:10.5px;color:var(--dsw-alias-label-secondary);padding:0 10px 6px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-cv-picker-search{padding:0 10px 6px;flex:none}
+.vcg-cv-picker-search .vcg-input{height:28px;font-size:12px;border-radius:7px;user-select:text}
+.vcg-cv-picker input{user-select:text}
+.vcg-cv-picker-list{flex:1;min-height:0;overflow:auto;padding:2px 6px 8px}
+.vcg-cv-picker-item{display:flex;align-items:center;gap:7px;width:100%;text-align:left;padding:6px 7px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:12px;cursor:pointer}
+.vcg-cv-picker-item:hover,.vcg-cv-picker-item:focus-visible{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-border-l1);outline:none}
+.vcg-cv-picker-accent{width:3px;height:24px;border-radius:2px;flex:none;background:var(--dsw-alias-brand-primary)}
+.vcg-cv-picker-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.vcg-cv-picker-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-cv-picker-sub{font-size:10px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-cv-picker-empty{padding:16px 10px;text-align:center;font-size:11.5px;line-height:1.5;color:var(--dsw-alias-label-secondary)}
+
 /* ---------------------------------------------------------------- minimap */
 .vcg-cv-minimap{position:absolute;right:10px;bottom:10px;z-index:3;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 92%,transparent);box-shadow:0 4px 16px rgba(0,0,0,.16);overflow:hidden;cursor:crosshair;user-select:none;backdrop-filter:blur(4px)}
 .vcg-cv-minimap svg{display:block}
@@ -613,7 +662,7 @@
 
   const ENGINE_SHORT = { cloud: '云', local: '本', both: '云/本' }
   const ENGINE_ICON = { cloud: 'cloud', local: 'server', both: 'layers' }
-  const STATUS_LABEL_KEY = { idle: 'cvStatusIdle', running: 'cvStatusRunning', done: 'cvStatusDone', error: 'cvStatusError' }
+  const STATUS_LABEL_KEY = { idle: 'cvStatusIdle', pending: 'cvStatusPending', running: 'cvStatusRunning', done: 'cvStatusDone', error: 'cvStatusError' }
 
   function engineLabel(engine) {
     const labels = consts.ENGINE_LABELS || {}
@@ -1232,6 +1281,170 @@
     )
   }
 
+  /* --------------------------------------------------- connection picker */
+
+  /**
+   * Node definitions that can be auto-connected to `from` (a port ref from a
+   * just-finished idle drag). `from.dir === 'out'` lists definitions with at
+   * least one compatible *input*; `'in'` lists definitions with a compatible
+   * *output*. Compatibility reuses validateConnection/canConnect.
+   * @returns {Array<{def: object, port: object}>} sorted by category/order/name.
+   */
+  function compatibleNodeDefs(defs, from) {
+    const list = Array.isArray(defs) ? defs : []
+    if (!from || !from.node || !from.port) return []
+    const dirIn = from.dir === 'in'
+    const fromType = from.type || 'any'
+    const picked = []
+    for (const def of list) {
+      if (!def || !def.id || def.__missing) continue
+      const ports = dirIn ? def.outputs : def.inputs
+      if (!Array.isArray(ports) || !ports.length) continue
+      let match = null
+      for (const port of ports) {
+        if (!port || !port.id) continue
+        const check = dirIn
+          ? validateConnection(
+              { node: def.id, dir: 'out', port: port.id, type: port.type || 'any' },
+              { node: from.node, dir: 'in', port: from.port, type: fromType },
+            )
+          : validateConnection(
+              { node: from.node, dir: 'out', port: from.port, type: fromType },
+              { node: def.id, dir: 'in', port: port.id, type: port.type || 'any' },
+            )
+        if (check.ok) {
+          match = port
+          break
+        }
+      }
+      if (match) picked.push({ def: def, port: match })
+    }
+    const categories = Array.isArray(consts.NODE_CATEGORIES) ? consts.NODE_CATEGORIES : []
+    const rank = {}
+    categories.forEach((category, index) => {
+      if (category && category.id && rank[category.id] == null) rank[category.id] = index
+    })
+    const rankOf = (def) => (rank[def.category || 'utility'] == null ? 99 : rank[def.category || 'utility'])
+    return picked.sort((a, b) => {
+      const rankDiff = rankOf(a.def) - rankOf(b.def)
+      if (rankDiff) return rankDiff
+      const orderDiff = (Number(a.def.order) || 999) - (Number(b.def.order) || 999)
+      if (orderDiff) return orderDiff
+      return String(a.def.nameZh || a.def.name || a.def.id).localeCompare(String(b.def.nameZh || b.def.name || b.def.id))
+    })
+  }
+
+  /**
+   * Floating "add node & connect" menu opened by releasing an idle port drag on
+   * blank canvas (CONTRACT §13.5). Local search only; selection bubbles up.
+   */
+  function ConnectionPicker(props) {
+    const defs = Array.isArray(props.defs) ? props.defs : []
+    const from = props.from || {}
+    const [search, setSearch] = React.useState('')
+    const candidates = React.useMemo(
+      () => compatibleNodeDefs(defs, from),
+      [defs, from.node, from.dir, from.port, from.type],
+    )
+    const query = search.trim().toLowerCase()
+    const items = query
+      ? candidates.filter((item) => {
+          const def = item.def
+          const haystack = [def.id, def.name, def.nameZh, def.description, def.category, def.engine]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+          return haystack.indexOf(query) >= 0
+        })
+      : candidates
+    const dirIn = from.dir === 'in'
+    const style = { left: (Number(props.left) || 0) + 'px', top: (Number(props.top) || 0) + 'px' }
+    function onSearchKeyDown(event) {
+      if (!event) return
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        if (typeof props.onClose === 'function') props.onClose()
+        return
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        if (items.length && typeof props.onPick === 'function') props.onPick(items[0])
+      }
+    }
+    return h(
+      'div',
+      {
+        className: 'vcg-cv-picker',
+        style: style,
+        role: 'dialog',
+        'aria-label': t('cvPickerTitle'),
+        onPointerDown: stopEvent,
+        onMouseDown: stopEvent,
+        onContextMenu: (event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        },
+      },
+      h(
+        'div',
+        { className: 'vcg-cv-picker-head' },
+        h(Glyph, { name: 'plus', size: 13 }),
+        h('span', { className: 'vcg-cv-picker-title' }, t('cvPickerTitle')),
+        h(
+          IconButton,
+          { label: t('cvPickerClose'), title: t('cvPickerClose'), onClick: () => props.onClose && props.onClose() },
+          h(Glyph, { name: 'close', size: 13 }),
+        ),
+      ),
+      props.hint ? h('div', { className: 'vcg-cv-picker-hint', title: props.hint }, props.hint) : null,
+      h(
+        'div',
+        { className: 'vcg-cv-picker-search' },
+        h(TextInput, {
+          value: search,
+          onChange: (value) => setSearch(value),
+          placeholder: t('cvSearchNodes'),
+          autoFocus: true,
+          onKeyDown: onSearchKeyDown,
+        }),
+      ),
+      h(
+        'div',
+        { className: 'vcg-cv-picker-list' },
+        items.length === 0 ? h('div', { className: 'vcg-cv-picker-empty' }, query ? t('cvNoMatch') : t('cvPickerEmpty')) : null,
+        items.map((item) => {
+          const def = item.def
+          const port = item.port
+          const portLabel = (port && (port.label || port.id)) || ''
+          const sub = (dirIn ? t('cvPickerOutput') : t('cvPickerInput')) + ' ' + portLabel + ' · ' + engineLabel(def.engine)
+          return h(
+            'button',
+            {
+              key: def.id,
+              type: 'button',
+              className: 'vcg-cv-picker-item',
+              title: def.description || def.name || def.id,
+              onPointerDown: stopEvent,
+              onClick: () => props.onPick && props.onPick(item),
+            },
+            h('span', {
+              className: 'vcg-cv-picker-accent',
+              style: { background: (def.ui && def.ui.accent) || 'var(--dsw-alias-brand-primary)' },
+            }),
+            h(
+              'span',
+              { className: 'vcg-cv-picker-main' },
+              h('span', { className: 'vcg-cv-picker-name' }, def.nameZh || def.name || def.id),
+              h('span', { className: 'vcg-cv-picker-sub' }, sub),
+            ),
+            h(Glyph, { name: 'plus', size: 12, style: { color: 'var(--dsw-alias-label-secondary)' } }),
+          )
+        }),
+      ),
+    )
+  }
+
   /* ---------------------------------------------------------------- Canvas */
 
   function emptyWorkflow(id) {
@@ -1276,6 +1489,7 @@
     const results = props.results && typeof props.results === 'object' ? props.results : EMPTY_OBJECT
     const readOnly = Boolean(props.readOnly)
     const running = Boolean(props.running)
+    const debugBusy = Boolean(props.debugBusy)
     const workflowName = workflow.name || t('cvDefaultWorkflowName')
     const modelOptions = collectModelOptions(store && store.state)
 
@@ -1372,6 +1586,9 @@
     const [spaceDown, setSpaceDown] = React.useState(false)
     const [panning, setPanning] = React.useState(false)
     const [enginePref, setEnginePref] = React.useState('auto')
+    // Idle drag → "add node & connect" menu (CONTRACT §13.5):
+    // { from: portRef, world: {x,y}, screen: {x,y} } | null
+    const [picker, setPicker] = React.useState(null)
 
     /* --------------------------------------------------------- view math */
     function applyView(nextView) {
@@ -1760,6 +1977,7 @@
     function startPan(event, clearWhenClick) {
       if (event.button !== 0 && event.button !== 1) return
       if (connectRef.current) return
+      closePicker()
       event.preventDefault()
       if (clearWhenClick) clearSelection()
       focusStage()
@@ -1814,6 +2032,7 @@
     }
 
     function startNodeDrag(event, node) {
+      closePicker()
       const p = propsRef.current
       if (!p || event.button !== 0) return
       if (connectRef.current) return
@@ -1958,6 +2177,7 @@
       const p = propsRef.current
       if (!p || p.readOnly || connectRef.current) return
       if (event.button !== 0) return
+      closePicker()
       event.preventDefault()
       event.stopPropagation()
       focusStage()
@@ -2014,9 +2234,9 @@
         window.removeEventListener('pointerup', onUp)
         window.removeEventListener('pointercancel', onCancel)
       }
-      function onUp() {
+      function onUp(upEvent) {
         clearGestureCleanup()
-        finishConnect(gesture)
+        finishConnect(gesture, upEvent)
       }
       function onCancel() {
         clearGestureCleanup()
@@ -2041,29 +2261,137 @@
       setConnectState(null)
     }
 
-    function finishConnect(gesture) {
+    function finishConnect(gesture, releaseEvent) {
       hideTempPath()
       setHoverPort(null)
       setConnectState(null)
       connectRef.current = null
-      if (!gesture || !gesture.from || !gesture.hover) return
-      const built = buildConnection(gesture.from, gesture.hover)
-      if (!built.ok || !built.from || !built.to) return
-      const current = wfRef.current
-      const currentEdges = Array.isArray(current.edges) ? current.edges : []
-      const filtered = currentEdges.filter(
-        (edge) => edge && edge.to && !(edge.to.node === built.to.node && edge.to.port === built.to.port),
-      )
-      const edge = {
-        id: nextEdgeId(currentEdges),
-        from: { node: built.from.node, port: built.from.port },
-        to: { node: built.to.node, port: built.to.port },
+      if (!gesture || !gesture.from) return
+      if (gesture.hover) {
+        const built = buildConnection(gesture.from, gesture.hover)
+        if (!built.ok || !built.from || !built.to) return
+        const current = wfRef.current
+        const currentEdges = Array.isArray(current.edges) ? current.edges : []
+        const filtered = currentEdges.filter(
+          (edge) => edge && edge.to && !(edge.to.node === built.to.node && edge.to.port === built.to.port),
+        )
+        const edge = {
+          id: nextEdgeId(currentEdges),
+          from: { node: built.from.node, port: built.from.port },
+          to: { node: built.to.node, port: built.to.port },
+        }
+        emitWorkflow(Object.assign({}, current, { edges: filtered.concat([edge]) }))
+        return
       }
-      emitWorkflow(Object.assign({}, current, { edges: filtered.concat([edge]) }))
+      // Released on blank canvas: keep the connection intent and open the
+      // "add node & connect" picker anchored at the release point (§13.5).
+      const point = pickerTargetPoint(releaseEvent)
+      if (!point) return
+      setPicker({ from: gesture.from, world: point.world, screen: point.screen })
+    }
+
+    /* ------------------------------------------------ picker (§13.5) */
+
+    function closePicker() {
+      setPicker((current) => (current ? null : current))
+    }
+
+    /**
+     * Screen/world point for the picker, or null when the release point is not
+     * blank stage area (port, node body, minimap, toolbar, …).
+     */
+    function pickerTargetPoint(event) {
+      if (!event || typeof event.clientX !== 'number' || typeof event.clientY !== 'number') return null
+      const stage = stageRef.current
+      if (!stage) return null
+      const doc = typeof document !== 'undefined' ? document : null
+      if (!doc || typeof doc.elementFromPoint !== 'function') return null
+      const rect = stage.getBoundingClientRect()
+      const clientX = event.clientX
+      const clientY = event.clientY
+      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return null
+      const el = doc.elementFromPoint(clientX, clientY)
+      if (!el) return null
+      if (!stage.contains(el)) return null
+      if (el.closest && el.closest('[data-node-id],[data-port-node],.vcg-cv-minimap,.vcg-cv-quick-btn,.vcg-cv-picker')) return null
+      const screen = { x: clientX - rect.left, y: clientY - rect.top }
+      return { screen: screen, world: canvasToWorld(screen, viewRef.current) }
+    }
+
+    /** Place a new node next to the release point, dodging existing nodes. */
+    function pickerNodePosition(def, world, dirIn, portIndex, currentNodes) {
+      const width = nodeWidth(def)
+      const offsetY = portRowOffset(Math.max(0, portIndex || 0))
+      let x = Math.round(dirIn ? world.x - width - 24 : world.x + 24)
+      let y = Math.round(world.y - offsetY)
+      let guard = 0
+      while (
+        guard < 12 &&
+        currentNodes.some(
+          (node) => node && Math.abs((Number(node.x) || 0) - x) < 12 && Math.abs((Number(node.y) || 0) - y) < 12,
+        )
+      ) {
+        guard += 1
+        x += 26
+        y += 26
+      }
+      return { x: x, y: y }
+    }
+
+    /** Create the picked node, auto-wire it, emit once and select it. */
+    function pickNodeFromMenu(item) {
+      const active = picker
+      setPicker(null)
+      if (!active || !item || !item.def || !item.def.id) return
+      const p = propsRef.current
+      if (!p || p.readOnly) return
+      const def = item.def
+      const from = active.from
+      if (!from || !from.node || !from.port) return
+      const dirIn = from.dir === 'in'
+      const ports = dirIn ? (Array.isArray(def.outputs) ? def.outputs : []) : Array.isArray(def.inputs) ? def.inputs : []
+      let port = null
+      for (const candidate of ports) {
+        if (!candidate || !candidate.id) continue
+        const check = dirIn
+          ? validateConnection(
+              { node: def.id, dir: 'out', port: candidate.id, type: candidate.type || 'any' },
+              { node: from.node, dir: 'in', port: from.port, type: from.type || 'any' },
+            )
+          : validateConnection(
+              { node: from.node, dir: 'out', port: from.port, type: from.type || 'any' },
+              { node: def.id, dir: 'in', port: candidate.id, type: candidate.type || 'any' },
+            )
+        if (check.ok) {
+          port = candidate
+          break
+        }
+      }
+      if (!port) return
+      const current = workflowBase()
+      const currentNodes = Array.isArray(current.nodes) ? current.nodes : []
+      const currentEdges = Array.isArray(current.edges) ? current.edges : []
+      const portIndex = ports.indexOf(port)
+      const placed = pickerNodePosition(def, active.world || { x: 0, y: 0 }, dirIn, portIndex, currentNodes)
+      const id = nextNodeId(currentNodes)
+      const node = { id: id, type: def.id, x: placed.x, y: placed.y, params: {}, title: '' }
+      const edgeFrom = dirIn ? { node: id, port: port.id } : { node: from.node, port: from.port }
+      const edgeTo = dirIn ? { node: from.node, port: from.port } : { node: id, port: port.id }
+      // One input port only accepts one edge — replace whatever was there.
+      const filtered = currentEdges.filter(
+        (edge) => edge && edge.to && !(edge.to.node === edgeTo.node && edge.to.port === edgeTo.port),
+      )
+      const edge = { id: nextEdgeId(currentEdges), from: edgeFrom, to: edgeTo }
+      emitWorkflow(Object.assign({}, current, { nodes: currentNodes.concat([node]), edges: filtered.concat([edge]) }))
+      setSel({ kind: 'node', id: id })
+      setMulti([id])
+      notifySelect(id)
+      focusStage()
     }
 
     /* ------------------------------------------------------ minimap gesture */
     function startMinimapDrag(event) {
+      closePicker()
       if (event.button !== 0) return
       event.stopPropagation()
       event.preventDefault()
@@ -2135,6 +2463,7 @@
     function onStageDrop(event) {
       if (!event) return
       event.preventDefault()
+      closePicker()
       const dataTransfer = event.dataTransfer
       if (!dataTransfer) return
       let raw = ''
@@ -2224,6 +2553,7 @@
               fill: 'none',
               'data-edge-id': edge.id,
               onPointerDown: (event) => {
+                closePicker()
                 event.stopPropagation()
               },
               onClick: (event) => {
@@ -2308,6 +2638,28 @@
         { id: 'cloud', label: t('cloud') },
         { id: 'local', label: t('local') },
       ]
+      /* Live progress across the graph (§13.2): counts + the node being run. */
+      let runProgressLabel = ''
+      if (running) {
+        let done = 0
+        let failed = 0
+        let current = ''
+        for (const node of nodes) {
+          const entry = results && results[node.id]
+          const state = entry && entry.status
+          if (state === 'done') done += 1
+          else if (state === 'error') failed += 1
+          else if (state === 'running') {
+            if (current === '') {
+              const def = resolveDef(node.type)
+              current = node.title || (def && (def.nameZh || def.name)) || node.type
+            }
+          }
+        }
+        runProgressLabel = t('cvRunProgress', { done: done, total: nodes.length })
+        if (failed > 0) runProgressLabel += ' · ' + t('cvRunFailed', { failed: failed })
+        if (current !== '') runProgressLabel += ' · ' + t('cvRunCurrent', { node: current })
+      }
       return h(
         'div',
         {
@@ -2324,6 +2676,9 @@
         ),
         h('div', { className: 'vcg-cv-tb-title', title: workflowName }, workflowName),
         h('span', { className: 'vcg-cv-tb-meta' }, nodes.length + ' ' + t('cvNodes') + ' · ' + edges.length + ' ' + t('cvEdges')),
+        running && runProgressLabel
+          ? h('span', { className: 'vcg-cv-tb-run', title: runProgressLabel }, runProgressLabel)
+          : null,
         h('span', { className: 'vcg-cv-tb-spacer' }),
         props.headerExtra || null,
         running
@@ -2344,6 +2699,20 @@
               },
               t('runAll'),
             ),
+        h(
+          Button,
+          {
+            size: 'sm',
+            icon: debugBusy ? undefined : 'check',
+            title: t('cvDebugHint'),
+            disabled: running || debugBusy || typeof props.onDebugRun !== 'function',
+            onClick: () => {
+              const p = propsRef.current
+              if (p && typeof p.onDebugRun === 'function' && !p.running && !p.debugBusy) p.onDebugRun()
+            },
+          },
+          debugBusy ? t('cvDebugBusy') : t('cvDebugRun'),
+        ),
         h('span', { className: 'vcg-cv-tb-sep' }),
         h(
           'div',
@@ -2503,6 +2872,38 @@
       return h('div', { className: 'vcg-cv-connect-hint' + (invalid ? ' vcg-cv-invalid' : '') }, label)
     }
 
+    /* ------------------------------------------------ picker overlay (§13.5) */
+    function renderPicker() {
+      if (!picker || !picker.from) return null
+      const size = viewSize()
+      const panelW = 272
+      const panelH = 360
+      const left = clampNumber((Number(picker.screen && picker.screen.x) || 0) - 8, 8, Math.max(8, size.width - panelW - 8))
+      const top = clampNumber((Number(picker.screen && picker.screen.y) || 0) - 8, 8, Math.max(8, size.height - panelH - 8))
+      const from = picker.from
+      const sourceNode = nodesById[from.node]
+      const sourceDef = sourceNode ? resolveDef(sourceNode.type) : null
+      const sourcePorts = sourceDef ? (from.dir === 'in' ? sourceDef.inputs : sourceDef.outputs) : null
+      const sourcePort = Array.isArray(sourcePorts) ? sourcePorts.find((port) => port && port.id === from.port) : null
+      const sourceName =
+        (sourceNode && (sourceNode.title || '')) ||
+        (sourceDef && (sourceDef.nameZh || sourceDef.name)) ||
+        from.node ||
+        ''
+      const portName = (sourcePort && (sourcePort.label || sourcePort.id)) || from.port || ''
+      const hint = t(from.dir === 'in' ? 'cvPickerHintIn' : 'cvPickerHintOut', { node: sourceName, port: portName })
+      return h(ConnectionPicker, {
+        key: 'picker-' + from.node + '-' + from.port + '-' + (Number(picker.world && picker.world.x) || 0) + '-' + (Number(picker.world && picker.world.y) || 0),
+        from: from,
+        defs: nodeDefs,
+        left: left,
+        top: top,
+        hint: hint,
+        onPick: (item) => pickNodeFromMenu(item),
+        onClose: () => closePicker(),
+      })
+    }
+
     function renderPreview() {
       if (!preview) return null
       const location = preview.path || preview.url || ''
@@ -2567,6 +2968,8 @@
       const el = stageRef.current
       if (!el) return undefined
       function onWheel(event) {
+        // Let the picker list scroll instead of zooming the canvas.
+        if (event.target && event.target.closest && event.target.closest('.vcg-cv-picker')) return
         event.preventDefault()
         const rect = el.getBoundingClientRect()
         const v = viewRef.current
@@ -2621,6 +3024,7 @@
         }
         if (event.key === 'Escape') {
           if (typeof acts.cancelConnect === 'function') acts.cancelConnect()
+          if (typeof acts.closePicker === 'function') acts.closePicker()
           if (typeof acts.clearSelection === 'function') acts.clearSelection()
           return
         }
@@ -2731,6 +3135,7 @@
       deleteSelection: deleteSelection,
       clearSelection: clearSelection,
       cancelConnect: cancelConnect,
+      closePicker: closePicker,
       commitView: commitView,
       fitAll: fitAll,
       resetZoom: resetZoom,
@@ -2780,6 +3185,7 @@
       renderMinimap(),
       nodes.length ? h('div', { className: 'vcg-cv-help' }, t('cvPanHint')) : null,
       renderConnectHint(),
+      renderPicker(),
     )
 
     return h(

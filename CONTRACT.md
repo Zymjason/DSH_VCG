@@ -330,3 +330,53 @@ sdk/loader.md                 如何从本仓库拉取节点包（raw URL / mani
 - 仓库地址仍由设置页 `nodeRepo.githubBase/giteaBase` 配置；页面只读展示并提供 source 切换与刷新。
 - 客户端 part：`parts/repo.js` → `V.NodeRepoPage`、`V.RepoPanelIcon`（build.mjs 顺序：core, canvas, settings, studio, panel, repo, view, apply）。
 - `V.nav.openPanel(panelId)` 通过 `ctx.layout.selectPanel` 注入，供页面互跳。
+
+## 13. 第三轮迭代（2026-11-13）：实时运行状态 / 统一运行控件 / 专业模式门控 / 空闲拖线呼出节点菜单
+
+### 13.1 运行实时状态（Host）
+
+- `Engine.run({ ..., runId?, onEvent? })`：新增可选 `runId` 与进度回调 `onEvent(event)`，事件：
+  - `{ type:'run-start', runId, order }`
+  - `{ type:'node-start', runId, nodeId }`
+  - `{ type:'node-done', runId, nodeId, result }`（`result` 与 `results[nodeId]` 同构）
+  - `{ type:'node-error', runId, nodeId, error, ms }`
+  - `{ type:'run-done', runId, ok, error }`
+- `index.js` 维护 `this.runs = Map<key, runRecord>`；`runRecord`：
+  ```json
+  {
+    "runId": "run_x", "key": "session:...", "status": "running|done|error",
+    "startedAt": "ISO", "finishedAt": "ISO", "order": ["n1"],
+    "currentNodeId": "n1", "error": "",
+    "nodes": { "n1": { "status": "pending|running|done|error", "ms": 0, "images": [], "text": "", "video": null, "error": "", "skipped": false } }
+  }
+  ```
+- `runWorkflow` / `runNode` 开始前写入记录，事件更新；结束后 `status` 置 `done`/`error` 并写 `finishedAt`；返回值不变（`results` 仍为最终权威）。
+- RPC `runStatus { key?, sessionId? }` → `{ run: runRecord | null }`，无副作用；保留最近一次运行记录供客户端轮询收尾。
+- 单节点运行只登记被执行的节点（`nodeId` 及其上游），未执行节点不出现在记录里。
+
+### 13.2 客户端轮询（view.js / studio.js）
+
+- `running` 期间每 500ms 调用 `runStatus`，把 `run.nodes` 合并进 `results`：`running` → `{status:'running'}`，`done`/`error` → 完整 result；`pending` 跳过。
+- 轮询在 `runToken` 变化、组件卸载、运行结束时停止；`runWorkflow` 返回后仍以返回值覆盖 results。
+- `runNode` 同样轮询（只影响该节点及其上游）。
+
+### 13.3 统一运行 / Debug 运行按钮位置
+
+- 「运行」与「Debug 运行」只出现在 **Canvas 组件顶部工具栏**（`.vcg-cv-toolbar`），两个视图（聊天画布 / 工作台画布）位置一致；页面级工具栏不再放这两个按钮（全屏、保存、scope 等留在页面级）。
+- Canvas 新增 props：`onDebugRun?: () => void`、`debugBusy?: boolean`。
+- 运行中：有 `onStop` 时显示「停止」（danger），否则显示禁用「运行中…」；Debug 按钮在 `running` / `debugBusy` 时禁用，忙碌文案「校验中…」。
+- `view.js` / `studio.js` 继续持有 `debugRun` 状态与 Debug 报告 Modal，通过 props 传给 Canvas；页面级 run/debug 按钮删除。
+- `parts/canvas.js` 内新增 i18n key（zhExtra/enExtra）。
+
+### 13.4 专业模式门控「节点工作流仓库」侧栏
+
+- `proMode !== true` 时不注册 `sidebar.panellist#dsh-vcg-repo` 与 `main#dsh-vcg-repo`；`proMode` 切到 `true` 时动态注册，切回 `false` 时撤销。
+- 实现限定在 `parts/apply.js`：监听 `V.store.listeners`（`V.setStore` 会通知），用 `slots.inject(...)` 返回的 disposer 注册/注销；不改变其它 Slot 注册。
+
+### 13.5 空闲拖线呼出「节点添加并连接」菜单（canvas.js）
+
+- 从端口开始拖线，指针释放处**没有**落在端口/节点上（空白画布）时：不取消连线，弹「添加节点并连接」菜单。
+- 候选过滤：从输出端口拖出 → 只列含兼容输入端口的节点定义；从输入端口拖出 → 只列含兼容输出端口的节点定义；菜单带搜索框。
+- 选中候选：在释放点附近创建节点（不重叠），建立一条边（端口自动取第一个兼容端口；目标输入已有边时替换），并选中新节点。
+- 关闭：选中节点、`Esc`、点击空白处、开始新的拖动/连接。释放点落在节点主体但非端口上视为无效，不弹菜单。
+- 菜单只使用 Canvas 既有 `emitWorkflow` / `validateConnection` / `nextNodeId` / `nextEdgeId` 等内部能力，不新增 Host RPC。

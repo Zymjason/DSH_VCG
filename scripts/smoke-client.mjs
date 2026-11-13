@@ -112,6 +112,42 @@ const fakeRequire = (id) => {
   throw new Error('unexpected client require: ' + id)
 }
 
+/* The plugin warms its store through the `state` RPC on apply; §13.4 gates the
+   node-repository slots on proMode, so the smoke store must expose proMode:true. */
+const providerStub = {
+  id: 'p',
+  label: 'Smoke provider',
+  kind: 'bailian-chat-image',
+  baseUrl: 'https://example.invalid/v1',
+  apiKeyConfigured: true,
+  hasKey: true,
+  enabled: true,
+  models: { image: ['img'], video: ['vid'], text: ['txt'] },
+}
+const fakeState = {
+  version: 2,
+  proMode: true,
+  outputDir: 'vcg-output',
+  local: { enabled: false, comfyuiUrl: '', timeoutMs: 600000 },
+  defaults: { providerId: 'p', imageModel: 'img', videoModel: 'vid', textModel: 'txt' },
+  providers: [providerStub],
+  nodeRepo: { githubBase: 'https://raw.githubusercontent.com/example/repo/main', giteaBase: '', source: 'github', lastSyncAt: '' },
+  projects: [],
+  canvases: {},
+  outputs: [],
+  bindings: {},
+  counts: { nodes: 15, workflows: 4, builtinNodes: 15, customNodes: 0 },
+  detection: { llmAvailable: true, globalKey: true, syncedAt: '', source: 'github' },
+  binding: null,
+  provider: providerStub,
+  canvasKey: 'session:smoke',
+}
+const fakeFetch = async () => ({
+  ok: true,
+  status: 200,
+  json: async () => ({ ok: true, value: fakeState }),
+})
+
 /* ------------------------------------------------------------- evaluate */
 
 const source = await readFile(join(packageDir, 'client.js'), 'utf8')
@@ -124,7 +160,7 @@ try {
     globalThis.document,
     globalThis.localStorage,
     {},
-    undefined,
+    fakeFetch,
   )
 } catch (error) {
   loadError = error && error.message ? error.message : String(error)
@@ -190,6 +226,11 @@ try {
   applyError = error && error.message ? error.message : String(error)
 }
 check('apply() runs against a fake context', applyError === '', applyError)
+
+/* apply() warms the store asynchronously; proMode-gated slots register once the
+   snapshot lands. Give that promise chain (and the listener) one macrotask. */
+await new Promise((resolve) => setTimeout(resolve, 0))
+check('store warmed through the state RPC (proMode gating input)', Boolean(moduleExports) && fakeState.proMode === true)
 
 const bySlot = (slotName) => registrations.filter((entry) => entry.slot === slotName)
 const required = [

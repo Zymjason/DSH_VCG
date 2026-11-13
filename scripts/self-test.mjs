@@ -409,7 +409,14 @@ ok(typesCompatible('image', 'latent') === false, '§11.2 image→latent 禁止')
       persist: async () => {},
     })
     try {
-      const dry = await engine.run({ key: 'session:selftest', workflow, sessionId: 'selftest' })
+      const events = []
+      const dry = await engine.run({
+        key: 'session:selftest',
+        workflow,
+        sessionId: 'selftest',
+        runId: 'run-selftest',
+        onEvent: (event) => events.push(event),
+      })
       const nodeResults = Object.values(dry.results)
       ok(nodeResults.every((result) => result.status === 'done'), 'txt2img dry-run 全部节点 done', dry.error ?? '')
       const outputNode = workflow.nodes.find((node) => node.type === 'image-output')
@@ -421,6 +428,43 @@ ok(typesCompatible('image', 'latent') === false, '§11.2 image→latent 禁止')
       }
       ok(recorded.length >= 1, 'outputs[] 登记了生成记录')
       ok(recorded.every((entry) => entry.providerId && entry.model), 'outputs[] 记录 provider/model')
+      /* §13.1 progress events: order, runId passthrough and per-node timing. */
+      ok(events.length > 0 && events[0].type === 'run-start', '§13.1 首个进度事件是 run-start')
+      equal(events[0].runId, 'run-selftest', '§13.1 runId 透传到进度事件')
+      equal(events[0].order, dry.order, '§13.1 run-start order 与返回 order 一致')
+      const starts = events.filter((event) => event.type === 'node-start').map((event) => event.nodeId)
+      const dones = events.filter((event) => event.type === 'node-done')
+      const doneIds = dones.map((event) => event.nodeId)
+      ok(doneIds.length === dry.order.length, '§13.1 每个执行节点都有一个 node-done', 'dones=' + doneIds.length + ' order=' + dry.order.length)
+      ok(doneIds.every((id) => starts.includes(id)), '§13.1 每个 node-done 之前都有 node-start')
+      ok(
+        dones.every((event) => {
+          const result = event.result
+          return result && (result.status === 'done' || result.status === 'error') && Array.isArray(result.images)
+        }),
+        '§13.1 node-done 携带完整 result',
+      )
+      const finish = events[events.length - 1]
+      ok(finish.type === 'run-done' && finish.ok === true && finish.runId === 'run-selftest', '§13.1 最后一个事件是成功 run-done')
+
+      /* Single-node run: the record/order only covers nodeId + upstream (§13.1). */
+      const singleEvents = []
+      const singleTarget = workflow.nodes.find((node) => node.type === 'prompt-input') || workflow.nodes[0]
+      if (singleTarget) {
+        const single = await engine.run({
+          key: 'session:selftest',
+          workflow,
+          sessionId: 'selftest',
+          nodeId: singleTarget.id,
+          runId: 'run-single',
+          onEvent: (event) => singleEvents.push(event),
+        })
+        const singleOrder = singleEvents[0]?.order ?? []
+        ok(singleOrder.includes(singleTarget.id), '§13.1 单节点运行 order 含目标节点')
+        ok(singleOrder.length < dry.order.length, '§13.1 单节点运行 order 是整图子集')
+        ok(single.result && single.result.status === 'done', '§13.1 单节点运行返回目标节点 result')
+      }
+
       // Local-mode guard: txt2img uses cloud-only model-loader → readable error.
       const localHost = {
         ...engine.host,
