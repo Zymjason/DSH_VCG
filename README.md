@@ -4,6 +4,7 @@
 
 - 节点与工作流仓库：[DSH_VCG_repo](https://github.com/Zymjason/DSH_VCG_repo)　|　镜像：https://gitea.com/ZymJason_DSH/DSH_VCG_repo
 - 插件本仓库同时发布在：GitHub `Zymjason/DSH_VCG`　|　Gitea `ZymJason_DSH/DSH_VCG`
+- 版本与变更记录：[CHANGELOG.md](CHANGELOG.md)（当前 v1.1.0）
 
 ---
 
@@ -17,7 +18,9 @@
 | AI 自动组建工作流 | 画布上方输入自然语言 → 调用宿主 LLM，产出通过校验的节点/连线 JSON，直接替换画布 |
 | 节点式交互 | 节点实时拖动、端口拖线（类型校验）、连线选中/删除、Delete 删除、滚轮缩放、空白平移、适应画布；**不提供任何右键菜单** |
 | 画布全屏 | 会话 VCG 画布与工作台画布均有「全屏画布」按钮：画布固定铺满整个窗口，`Esc` 退出 |
-| 运行 / Debug 运行 | 画布顶部显著的主按钮「运行工作流」；旁边的「Debug 运行」只校验模型能否加载、工作流/节点完整性与安全性，**不生成内容、不写输出文件** |
+| 运行 / Debug 运行 | 画布顶部工具栏统一提供「运行全部」与「Debug 运行」（两个视图位置一致）；Debug 只校验模型能否加载、工作流/节点完整性与安全性，**不生成内容、不写输出文件** |
+| 实时运行状态 | 运行中每 500ms 读取 Host 运行记录：节点实时显示等待中 / 运行中 / 已完成（耗时）/ 失败，完成结果即时出现，工具栏显示进度与当前节点 |
+| 拖线即建节点 | 从端口拖线在空白画布松开 → 呼出「添加节点并连接」菜单，按端口类型过滤兼容节点，自动创建节点并连线 |
 | 节点工作流仓库侧边栏 | 左侧栏新增「VCG 节点工作流仓库」页：按分类/搜索浏览 DSH_VCG_repo 的节点与工作流，卡片式勾选、批量导入；仓库地址仍在设置中配置 |
 | 云端生成 | 自动检测全局 API（Alibaba Token Plan / `wan2.7-image`、`qwen-image-3.0-pro`、`qwen3.8-max` 等），也支持自定义 provider（bailian-chat-image / openai-images / openai-video / custom-http） |
 | 本地运算（可选） | 设置中开启后，工作流翻译为 ComfyUI API prompt 提交本地 `/prompt` 并轮询 `/history`，取回 `/view` 图片 |
