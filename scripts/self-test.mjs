@@ -256,6 +256,23 @@ ok(typesCompatible('image', 'latent') === false, '§11.2 image→latent 禁止')
   equal(zoned.zones[1].color, '', '§14.1 非法颜色回退空')
   const roundTrip = validateWorkflowShape(zoned, { where: '分区往返' })
   equal(roundTrip.zones, zoned.zones, '§14.1 分区规范化后可重复往返')
+  // §15.3 explicit zone membership: unknown/duplicate/non-string ids dropped,
+  // absent `nodes` stays absent so legacy geometric membership keeps working.
+  const zonedMembers = validateWorkflowShape({
+    nodes: [
+      { id: 'n1', type: 'x' },
+      { id: 'n2', type: 'x' },
+    ],
+    edges: [],
+    zones: [
+      { id: 'z1', x: 0, y: 0, w: 300, h: 200, nodes: ['n1', 'n1', 'n2', 'ghost', 42, '  n2  '] },
+      { id: 'z2', x: 0, y: 0, w: 300, h: 200 },
+    ],
+  })
+  equal(zonedMembers.zones[0].nodes, ['n1', 'n2'], '§15.3 分区成员去重并过滤不存在的节点')
+  equal(Object.prototype.hasOwnProperty.call(zonedMembers.zones[1], 'nodes'), false, '§15.3 旧分区无 nodes 时保持几何回退')
+  const roundTripMembers = validateWorkflowShape(zonedMembers, { where: '分区成员往返' })
+  equal(roundTripMembers.zones, zonedMembers.zones, '§15.3 分区成员规范化后可重复往返')
 }
 
 /* -------------------------------------------- §11.1 optional / required ports */

@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-vcg",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "type": "module",
   "description": "VCG 视觉控制生成器 (Visual Control Generator) — 节点式图像/视频生成工作流画布：聊天 VCG 画布模式、VCG 项目工作区、AI 自动组建工作流、云端 DeepSeek Harness API 生图/生视频，可选本地 ComfyUI 运算。",

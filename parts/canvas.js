@@ -98,6 +98,9 @@
     cvZoneDelete: '删除分区（不删除节点）',
     cvZoneResize: '拖动调整分区大小（最小 160 × 100）',
     cvZoneColor: '切换分区颜色',
+    cvZoneMembers: '{n} 节点',
+    cvZoneDropHint: '松开加入分区',
+    cvZoneRenameBtn: '重命名分区',
     cvMore: '更多',
     cvMoreEngine: '引擎模式',
     cvGraphStats: '图统计',
@@ -177,6 +180,9 @@
     cvZoneDelete: 'Delete zone (keeps nodes)',
     cvZoneResize: 'Drag to resize the zone (min 160 × 100)',
     cvZoneColor: 'Cycle zone color',
+    cvZoneMembers: '{n} nodes',
+    cvZoneDropHint: 'Release to join zone',
+    cvZoneRenameBtn: 'Rename zone',
     cvMore: 'More',
     cvMoreEngine: 'Engine mode',
     cvGraphStats: 'Graph',
@@ -374,6 +380,43 @@
       w: Math.max(ZONE_MIN_W, isFiniteNumber(zone.w) ? zone.w : ZONE_MIN_W),
       h: Math.max(ZONE_MIN_H, isFiniteNumber(zone.h) ? zone.h : ZONE_MIN_H),
     }
+  }
+  /** Approximate centre (world) of one node with an optional drag delta. */
+  function nodeCenterOf(node, def, size, deltaX, deltaY) {
+    const width = size && isFiniteNumber(size.w) ? size.w : nodeWidth(def)
+    const height = size && isFiniteNumber(size.h) ? size.h : estimateNodeHeight(def)
+    return {
+      x: (isFiniteNumber(node && node.x) ? node.x : 0) + (Number(deltaX) || 0) + width / 2,
+      y: (isFiniteNumber(node && node.y) ? node.y : 0) + (Number(deltaY) || 0) + height / 2,
+    }
+  }
+  /**
+   * Geometric membership fallback (§15.3): node ids whose centre is inside the
+   * zone. Used for legacy workflows whose zones have no explicit `nodes` list.
+   */
+  function zoneGeometricMembers(zone, nodes, defsById, measured) {
+    const rect = zoneRect(zone)
+    const out = []
+    for (const node of Array.isArray(nodes) ? nodes : []) {
+      if (!node || !node.id) continue
+      const def = defsById ? defsById[node.type] : null
+      const size = measured && measured[node.id] ? measured[node.id] : null
+      const center = nodeCenterOf(node, def, size, 0, 0)
+      if (center.x < rect.x || center.x > rect.x + rect.w || center.y < rect.y || center.y > rect.y + rect.h) continue
+      out.push(node.id)
+    }
+    return out
+  }
+  /** Topmost zone containing one world point (§15.3: last match in zones wins). */
+  function zoneHitAt(zones, x, y) {
+    let hit = null
+    for (const zone of Array.isArray(zones) ? zones : []) {
+      if (!zone || !zone.id) continue
+      const rect = zoneRect(zone)
+      if (x < rect.x || x > rect.x + rect.w || y < rect.y || y > rect.y + rect.h) continue
+      hit = zone
+    }
+    return hit
   }
   function nextEdgeId(edges) {
     const used = new Set()
@@ -774,7 +817,12 @@
 .vcg-cv-zone-title-input{flex:1;min-width:0;height:20px;border:1px solid var(--dsw-alias-brand-primary);border-radius:5px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-family:inherit;font-size:11.5px;padding:0 5px;outline:none}
 .vcg-cv-zone-act{width:20px;height:20px;border:0;background:transparent;border-radius:5px;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:none;opacity:0;transition:opacity 100ms ease}
 .vcg-cv-zone-selected .vcg-cv-zone-act{opacity:1}
+.vcg-cv-zone:hover .vcg-cv-zone-rename{opacity:1}
 .vcg-cv-zone-act:hover{background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 14%,transparent);color:var(--dsw-alias-state-error-primary)}
+.vcg-cv-zone-count{flex:none;font-size:10px;line-height:14px;padding:0 5px;border-radius:999px;color:var(--dsw-alias-label-secondary);border:1px solid color-mix(in srgb,var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary)) 32%,var(--dsw-alias-border-l1));background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent);white-space:nowrap;font-variant-numeric:tabular-nums}
+.vcg-cv-zone-drop{border-style:dashed;border-color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 11%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}
+.vcg-cv-zone-drop .vcg-cv-zone-head{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 20%,var(--dsw-alias-bg-layer-1))}
+.vcg-cv-zone-drop-hint{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);pointer-events:none;font-size:10.5px;line-height:16px;padding:0 8px;border-radius:999px;white-space:nowrap;color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 88%,transparent);border:1px solid color-mix(in srgb,var(--dsw-alias-brand-primary) 40%,transparent)}
 .vcg-cv-zone-handle{position:absolute;right:1px;bottom:1px;width:16px;height:16px;pointer-events:auto;cursor:nwse-resize;opacity:0;transition:opacity 100ms ease}
 .vcg-cv-zone:hover .vcg-cv-zone-handle,.vcg-cv-zone-selected .vcg-cv-zone-handle{opacity:1}
 .vcg-cv-zone-handle::before{content:"";position:absolute;right:4px;bottom:4px;width:7px;height:7px;border-right:2px solid var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary));border-bottom:2px solid var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary));border-radius:0 0 1px 0;opacity:.8}
@@ -1593,13 +1641,22 @@
     const rect = zoneRect(zone)
     const colorVar = zoneColorVar(zone.color)
     const label = zone.label || t('cvZoneDefault')
+    const memberCount = Number(props.memberCount) || 0
+    const startRename = () => {
+      if (readOnly) return
+      setDraft(zone.label || '')
+      setRenaming(true)
+    }
     return h(
       'div',
       {
         ref: (el) => {
           if (typeof props.registerEl === 'function') props.registerEl(zone.id, el)
         },
-        className: 'vcg-cv-zone' + (selected ? ' vcg-cv-zone-selected' : ''),
+        className:
+          'vcg-cv-zone' +
+          (selected ? ' vcg-cv-zone-selected' : '') +
+          (props.dropHint ? ' vcg-cv-zone-drop' : ''),
         'data-zone-id': zone.id,
         style: { left: rect.x, top: rect.y, width: rect.w, height: rect.h, '--vcg-cv-zone-color': colorVar },
         onContextMenu: (event) => {
@@ -1655,7 +1712,8 @@
                   cancelledRef.current = false
                   return
                 }
-                props.onRename(zone.id, draft.trim())
+                const nextLabel = draft.trim() || props.fallbackLabel || t('cvZoneDefault')
+                props.onRename(zone.id, nextLabel)
               },
             })
           : h(
@@ -1665,13 +1723,35 @@
                 title: label + ' — ' + t('cvZoneRename'),
                 onDoubleClick: (event) => {
                   event.stopPropagation()
-                  if (readOnly) return
-                  setDraft(zone.label || '')
-                  setRenaming(true)
+                  startRename()
                 },
               },
               label,
             ),
+        memberCount > 0
+          ? h(
+              'span',
+              { className: 'vcg-cv-zone-count', title: t('cvZoneMembers', { n: memberCount }) },
+              t('cvZoneMembers', { n: memberCount }),
+            )
+          : null,
+        !readOnly
+          ? h(
+              'button',
+              {
+                type: 'button',
+                className: 'vcg-cv-zone-act vcg-cv-zone-rename',
+                title: t('cvZoneRenameBtn'),
+                'aria-label': t('cvZoneRenameBtn'),
+                onPointerDown: stopEvent,
+                onClick: (event) => {
+                  event.stopPropagation()
+                  startRename()
+                },
+              },
+              h(Glyph, { name: 'edit', size: 11 }),
+            )
+          : null,
         selected && !readOnly
           ? h(
               'button',
@@ -1690,6 +1770,7 @@
             )
           : null,
       ),
+      props.dropHint ? h('div', { className: 'vcg-cv-zone-drop-hint' }, t('cvZoneDropHint')) : null,
       h('div', {
         className: 'vcg-cv-zone-handle',
         title: t('cvZoneResize'),
@@ -1843,6 +1924,8 @@
     const [libraryOpen, setLibraryOpen] = React.useState(false)
     const [miniOpen, setMiniOpen] = React.useState(true)
     const [moreOpen, setMoreOpen] = React.useState(false)
+    // §15.3: zone highlighted while a node being dragged hovers over it.
+    const [zoneDrop, setZoneDrop] = React.useState(null)
     const [spaceDown, setSpaceDown] = React.useState(false)
     const [panning, setPanning] = React.useState(false)
     const [enginePref, setEnginePref] = React.useState('auto')
@@ -2057,7 +2140,19 @@
       const nextEdges = currentEdges.filter(
         (edge) => edge && edge.from && edge.to && !removeSet.has(edge.from.node) && !removeSet.has(edge.to.node),
       )
-      emitWorkflow(Object.assign({}, current, { nodes: nextNodes, edges: nextEdges }))
+      // §15.3: drop deleted nodes from explicit zone membership in the same commit.
+      const currentZones = Array.isArray(current.zones) ? current.zones : []
+      let zonesChanged = false
+      const nextZones = currentZones.map((zone) => {
+        if (!zone || !Array.isArray(zone.nodes)) return zone
+        const kept = zone.nodes.filter((id) => !removeSet.has(id))
+        if (kept.length === zone.nodes.length) return zone
+        zonesChanged = true
+        return Object.assign({}, zone, { nodes: kept })
+      })
+      const patch = { nodes: nextNodes, edges: nextEdges }
+      if (zonesChanged) patch.zones = nextZones
+      emitWorkflow(Object.assign({}, current, patch))
       setSel({ kind: null, id: null })
       setMulti([])
       notifySelect(null)
@@ -2272,6 +2367,8 @@
         w: rect.w,
         h: rect.h,
         color: ZONE_COLOR_CYCLE[currentZones.length % ZONE_COLOR_CYCLE.length],
+        // §15.3: explicit membership for the selected nodes (empty when none).
+        nodes: selected.map((node) => node.id),
       }
       emitWorkflow(Object.assign({}, current, { zones: currentZones.concat([zone]) }))
       setSel({ kind: 'zone', id: zone.id })
@@ -2307,6 +2404,80 @@
         return Object.assign({}, zone, { label: nextLabel })
       })
       if (changed) emitWorkflow(Object.assign({}, current, { zones: nextZones }))
+      // §15.2: renaming always ends with the zone selected.
+      selectZone(zoneId)
+    }
+
+    /**
+     * §15.3: final zone membership after a node drag. Returns the normalized
+     * zones plus whether anything changed; explicit membership is written for
+     * every zone the dragged nodes actually entered or left (legacy geometric
+     * zones are materialized only when touched).
+     */
+    function commitNodeZoneMembership(currentWf, nextNodes, drag) {
+      const zones = Array.isArray(currentWf.zones) ? currentWf.zones : []
+      if (!zones.length || !drag.ids.length) return { changed: false, zones: zones }
+      const byId = {}
+      for (const item of nextNodes) if (item && item.id) byId[item.id] = item
+      const defs = defsByIdRef.current || {}
+      const hits = {}
+      for (const id of drag.ids) {
+        const item = byId[id]
+        if (!item) continue
+        const center = nodeCenterOf(item, defs[item.type] || resolveDef(item.type), drag.sizes[id], 0, 0)
+        const hit = zoneHitAt(zones, center.x, center.y)
+        hits[id] = hit ? hit.id : null
+      }
+      let changed = false
+      const nextZones = zones.map((zone) => {
+        if (!zone || !zone.id) return zone
+        const explicit = Array.isArray(zone.nodes)
+        const startMembers = explicit ? null : drag.geoMembers[zone.id] || []
+        const base = new Set(explicit ? zone.nodes.filter((id) => byId[id]) : startMembers.filter((id) => byId[id]))
+        let touched = explicit ? base.size !== zone.nodes.length : false
+        for (const id of drag.ids) {
+          if (!byId[id]) continue
+          if (hits[id] === zone.id) {
+            if (!base.has(id)) {
+              base.add(id)
+              touched = true
+            } else if (!explicit) {
+              touched = true
+            }
+          } else if (base.has(id)) {
+            base.delete(id)
+            touched = true
+          }
+        }
+        if (!touched) return zone
+        changed = true
+        return Object.assign({}, zone, { nodes: Array.from(base) })
+      })
+      return { changed: changed, zones: nextZones }
+    }
+
+    /** Rewrite the `d` of edges touching `changedIds` from final node coords (§15.1). */
+    function syncEdgePathsForNodes(nextNodes, changedIds) {
+      const byId = {}
+      for (const node of Array.isArray(nextNodes) ? nextNodes : []) if (node && node.id) byId[node.id] = node
+      const idSet = new Set(Array.isArray(changedIds) ? changedIds : [])
+      const wf = wfRef.current || {}
+      const list = Array.isArray(wf.edges) ? wf.edges : []
+      const defs = defsByIdRef.current || {}
+      for (const edge of list) {
+        if (!edge || !edge.from || !edge.to) continue
+        if (idSet.size && !idSet.has(edge.from.node) && !idSet.has(edge.to.node)) continue
+        const fromNode = byId[edge.from.node]
+        const toNode = byId[edge.to.node]
+        if (!fromNode || !toNode) continue
+        const from = portPosition(fromNode, defs[fromNode.type] || resolveDef(fromNode.type), 'out', edge.from.port)
+        const to = portPosition(toNode, defs[toNode.type] || resolveDef(toNode.type), 'in', edge.to.port)
+        const path = edgePath(from, to)
+        const refs = edgeElsRef.current[edge.id]
+        if (!refs) continue
+        if (refs.main) refs.main.setAttribute('d', path)
+        if (refs.hit) refs.hit.setAttribute('d', path)
+      }
     }
 
     function showTempPath(from, to, invalid) {
@@ -2442,10 +2613,26 @@
       if (!ids.length) return
       const positions = {}
       for (const id of ids) positions[id] = { x: Number(byId[id].x) || 0, y: Number(byId[id].y) || 0 }
+      const measured = measuredSizes()
+      const sizes = {}
+      for (const id of ids) {
+        const size = measured[id]
+        sizes[id] = size && isFiniteNumber(size.w) && isFiniteNumber(size.h) ? size : null
+      }
+      const currentZones = Array.isArray(current.zones) ? current.zones : []
+      // §15.3 geometric (legacy) membership snapshot at drag start.
+      const geoMembers = {}
+      for (const zone of currentZones) {
+        if (zone && zone.id && !Array.isArray(zone.nodes)) {
+          geoMembers[zone.id] = zoneGeometricMembers(zone, currentNodes, defsByIdRef.current, measured)
+        }
+      }
       const drag = {
         ids: ids,
         idSet: new Set(ids),
+        primaryId: node.id,
         positions: positions,
+        sizes: sizes,
         startX: event.clientX,
         startY: event.clientY,
         scale: viewRef.current.scale,
@@ -2457,15 +2644,47 @@
         nodesById: byId,
         defsById: defsByIdRef.current,
         edges: Array.isArray(current.edges) ? current.edges : [],
+        startZones: currentZones,
+        geoMembers: geoMembers,
       }
       function applyDrag() {
         if (!drag.moved) return
-        for (const id of drag.ids) {
-          const el = nodeElsRef.current[id]
-          if (el) el.style.transform = 'translate3d(' + drag.dx + 'px,' + drag.dy + 'px,0)'
-        }
         const worldDx = drag.dx / drag.scale
         const worldDy = drag.dy / drag.scale
+        // §15.1: the world layer is scaled, so the DOM translate must use the
+        // world delta — same value the edge paths use below.
+        for (const id of drag.ids) {
+          const el = nodeElsRef.current[id]
+          if (el) el.style.transform = 'translate3d(' + worldDx + 'px,' + worldDy + 'px,0)'
+        }
+        // §15.3: highlight the topmost zone hit by any dragged node centre.
+        if (drag.startZones.length) {
+          let hitZone = null
+          let hitIndex = -1
+          for (const id of drag.ids) {
+            const base = drag.positions[id]
+            if (!base) continue
+            const center = nodeCenterOf(
+              { x: base.x, y: base.y },
+              drag.defsById[drag.nodesById[id] && drag.nodesById[id].type] ||
+                resolveDef(drag.nodesById[id] && drag.nodesById[id].type),
+              drag.sizes[id],
+              worldDx,
+              worldDy,
+            )
+            for (let index = 0; index < drag.startZones.length; index += 1) {
+              const zone = drag.startZones[index]
+              if (!zone || !zone.id || index <= hitIndex) continue
+              const rect = zoneRect(zone)
+              if (center.x < rect.x || center.x > rect.x + rect.w) continue
+              if (center.y < rect.y || center.y > rect.y + rect.h) continue
+              hitZone = zone
+              hitIndex = index
+            }
+          }
+          const hitId = hitZone ? hitZone.id : null
+          setZoneDrop((previous) => (previous === hitId ? previous : hitId))
+        }
         for (const edge of drag.edges) {
           if (!edge || !edge.from || !edge.to) continue
           const fromMoved = drag.idSet.has(edge.from.node)
@@ -2515,6 +2734,7 @@
           CAF(drag.frame)
           drag.frame = 0
         }
+        setZoneDrop(null)
         const worldDx = Math.round(drag.dx / drag.scale)
         const worldDy = Math.round(drag.dy / drag.scale)
         for (const id of drag.ids) {
@@ -2533,7 +2753,20 @@
               y: Math.round(drag.positions[item.id].y + worldDy),
             })
           })
-          if (changed) emitWorkflow(Object.assign({}, currentWf, { nodes: nextNodes }))
+          if (changed) {
+            // §15.3: zone membership is committed together with the node coords.
+            const membership = commitNodeZoneMembership(currentWf, nextNodes, drag)
+            const patch = { nodes: nextNodes }
+            if (membership.changed) patch.zones = membership.zones
+            emitWorkflow(Object.assign({}, currentWf, patch))
+            // §15.1: sync edge paths from the final coords right away, so they
+            // do not lag one React render behind the released nodes.
+            syncEdgePathsForNodes(nextNodes, drag.ids)
+          }
+        } else {
+          // Rounded away to 0: nodes snap back, so the edges must too.
+          const wfNow = wfRef.current
+          syncEdgePathsForNodes(Array.isArray(wfNow.nodes) ? wfNow.nodes : [], drag.ids)
         }
         const activeSel = selRef.current
         const primary = (activeSel && activeSel.kind === 'node' && activeSel.id) || drag.ids[0]
@@ -2541,6 +2774,7 @@
       }
       function onCancel() {
         clearGestureCleanup()
+        setZoneDrop(null)
         if (drag.frame) {
           CAF(drag.frame)
           drag.frame = 0
@@ -2549,6 +2783,9 @@
           const el = nodeElsRef.current[id]
           if (el) el.style.transform = ''
         }
+        // §15.1: cancelled drag must not leave the edges behind.
+        const wfNow = wfRef.current
+        syncEdgePathsForNodes(Array.isArray(wfNow.nodes) ? wfNow.nodes : [], drag.ids)
       }
       clearGestureCleanup()
       gestureCleanupRef.current = cleanup
@@ -2561,15 +2798,14 @@
 
     /** Live-shift a set of nodes (DOM transforms) and their edge paths. */
     function applyLiveNodeShift(drag) {
-      const screenDx = drag.dx
-      const screenDy = drag.dy
+      // §15.1: world-space delta (the world layer is scaled).
+      const worldDx = drag.dx / drag.scale
+      const worldDy = drag.dy / drag.scale
       for (const id of drag.ids) {
         const el = nodeElsRef.current[id]
-        if (el) el.style.transform = 'translate3d(' + screenDx + 'px,' + screenDy + 'px,0)'
+        if (el) el.style.transform = 'translate3d(' + worldDx + 'px,' + worldDy + 'px,0)'
       }
       if (!drag.ids.length) return
-      const worldDx = screenDx / drag.scale
-      const worldDy = screenDy / drag.scale
       const idSet = new Set(drag.ids)
       for (const edge of drag.edges) {
         if (!edge || !edge.from || !edge.to) continue
@@ -2616,6 +2852,7 @@
         return
       }
       event.preventDefault()
+      setZoneDrop(null)
       selectZone(zone.id)
       focusStage()
       if (p.readOnly) return
@@ -2626,21 +2863,22 @@
       for (const node of currentNodes) if (node && node.id) byId[node.id] = node
       const rect = zoneRect(zone)
       const measured = measuredSizes()
+      // §15.3: move explicit members ∪ nodes geometrically inside (legacy
+      // fallback); membership itself is left untouched.
+      const memberIds = new Set()
+      if (Array.isArray(zone.nodes)) {
+        for (const id of zone.nodes) if (byId[id]) memberIds.add(id)
+      }
+      for (const id of zoneGeometricMembers(zone, currentNodes, defsByIdRef.current, measured)) memberIds.add(id)
       const ids = []
       const positions = {}
       for (const node of currentNodes) {
-        if (!node || !node.id || !byId[node.id]) continue
-        const def = defsByIdRef.current[node.type]
-        const size = measured[node.id]
-        const width = size && isFiniteNumber(size.w) ? size.w : nodeWidth(def)
-        const height = size && isFiniteNumber(size.h) ? size.h : estimateNodeHeight(def)
-        const x = isFiniteNumber(node.x) ? node.x : 0
-        const y = isFiniteNumber(node.y) ? node.y : 0
-        const cx = x + width / 2
-        const cy = y + height / 2
-        if (cx < rect.x || cx > rect.x + rect.w || cy < rect.y || cy > rect.y + rect.h) continue
+        if (!node || !node.id || !byId[node.id] || !memberIds.has(node.id)) continue
         ids.push(node.id)
-        positions[node.id] = { x: x, y: y }
+        positions[node.id] = {
+          x: isFiniteNumber(node.x) ? node.x : 0,
+          y: isFiniteNumber(node.y) ? node.y : 0,
+        }
       }
       const drag = {
         zoneId: zone.id,
@@ -2662,8 +2900,11 @@
       }
       function applyDrag() {
         if (!drag.moved) return
+        // §15.1: zone and member nodes both translate by the world delta.
+        const worldDx = drag.dx / drag.scale
+        const worldDy = drag.dy / drag.scale
         const zoneEl = zoneElsRef.current[drag.zoneId]
-        if (zoneEl) zoneEl.style.transform = 'translate3d(' + drag.dx + 'px,' + drag.dy + 'px,0)'
+        if (zoneEl) zoneEl.style.transform = 'translate3d(' + worldDx + 'px,' + worldDy + 'px,0)'
         applyLiveNodeShift(drag)
       }
       function cleanup() {
@@ -2698,7 +2939,11 @@
         const worldDx = Math.round(drag.dx / drag.scale)
         const worldDy = Math.round(drag.dy / drag.scale)
         resetZoneDragTransforms(drag)
-        if (!worldDx && !worldDy) return
+        if (!worldDx && !worldDy) {
+          const wfNow = wfRef.current
+          syncEdgePathsForNodes(Array.isArray(wfNow.nodes) ? wfNow.nodes : [], drag.ids)
+          return
+        }
         const currentWf = wfRef.current
         const currentNodesNow = Array.isArray(currentWf.nodes) ? currentWf.nodes : []
         const currentZones = Array.isArray(currentWf.zones) ? currentWf.zones : []
@@ -2718,10 +2963,15 @@
             : item,
         )
         emitWorkflow(Object.assign({}, currentWf, { nodes: nextNodes, zones: nextZones }))
+        // §15.1: release frame must already show final edge geometry.
+        syncEdgePathsForNodes(nextNodes, drag.ids)
       }
       function onCancel() {
         clearGestureCleanup()
         resetZoneDragTransforms(drag)
+        // §15.1: cancelled drag must not leave the edges behind.
+        const wfNow = wfRef.current
+        syncEdgePathsForNodes(Array.isArray(wfNow.nodes) ? wfNow.nodes : [], drag.ids)
       }
       clearGestureCleanup()
       gestureCleanupRef.current = cleanup
@@ -2737,6 +2987,7 @@
       if (connectRef.current) return
       event.stopPropagation()
       event.preventDefault()
+      setZoneDrop(null)
       selectZone(zone.id)
       focusStage()
       if (p.readOnly) return
@@ -3161,13 +3412,21 @@
 
     function renderZones() {
       if (!zones.length) return null
-      return zones.map((zone) => {
+      const defs = defsByIdRef.current || {}
+      return zones.map((zone, index) => {
         if (!zone || !zone.id) return null
+        // §15.3 badge: explicit membership, or the geometric fallback for legacy zones.
+        const memberCount = Array.isArray(zone.nodes)
+          ? zone.nodes.filter((id) => nodesById[id]).length
+          : zoneGeometricMembers(zone, nodes, defs, null).length
         return h(ZoneBox, {
           key: zone.id,
           zone: zone,
           selected: sel.kind === 'zone' && sel.id === zone.id,
           readOnly: readOnly,
+          memberCount: memberCount,
+          dropHint: zoneDrop === zone.id,
+          fallbackLabel: t('cvZoneName', { n: index + 1 }),
           onHeadPointerDown: (event, item) => startZoneDrag(event, item),
           onHandlePointerDown: (event, item) => startZoneResize(event, item),
           onCycleColor: (id) => cycleZoneColor(id),
