@@ -25,7 +25,17 @@ import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { clamp, isPlainObject, jsonResponse, messageOf, nowIso, normalizeBaseUrl, positiveInt, tail, uid, uniqueStrings } from './lib/util.js'
-import { DEFAULT_MODEL_CATALOG, StateStore, dataDirectory, maskProvider, normalizeOutputDir, normalizeProvider } from './lib/state.js'
+import {
+  DEFAULT_MODEL_CATALOG,
+  REPO_BRANCHES,
+  StateStore,
+  dataDirectory,
+  defaultModelsDir,
+  maskProvider,
+  normalizeOutputDir,
+  normalizeProvider,
+  normalizeRepoBranch,
+} from './lib/state.js'
 import {
   BUILTIN_FNS,
   NODE_CATEGORIES,
@@ -36,6 +46,7 @@ import {
   prepareImportedNode,
   validateNodeDef,
   joinUrl,
+  resolveRepoBranchBase,
 } from './lib/nodes.js'
 import {
   KNOWN_IMAGE_MODELS,
@@ -50,7 +61,7 @@ import {
   mergeCatalogs,
   testProviderConnection,
 } from './lib/cloud.js'
-import { Engine, queryPath, textValue, urlListOf } from './lib/engine.js'
+import { Engine, addUsage, emptyUsage, normalizeUsage, queryPath, textValue, urlListOf } from './lib/engine.js'
 import { buildWorkflowPrompt, collectStreamText, extractJsonObject, validateGeneratedPlan } from './lib/builder.js'
 import { defaultProjectsRoot, projectSlug, requireProjectName, sanitizeProjectName, suggestProjectPath } from './lib/projects.js'
 import { baseName, isWithin, mimeForPath } from './lib/paths.js'
@@ -58,6 +69,7 @@ import { emptyWorkflow, typesCompatible, validateWorkflowShape, validateWorkflow
 import { topoSort } from './lib/graph.js'
 import { runStaticDebug, summarizeChecks } from './lib/debug.js'
 import { fetchJson } from './lib/http.js'
+import { LocalTools } from './lib/localtools.js'
 
 /** RPC route path on the shared API channel. */
 const RPC_PATH = '/api/dsh-vcg/rpc'
@@ -129,8 +141,16 @@ class VcgStudio {
       logger: this.log,
     })
     this.engine = new Engine(this)
+    /** Local toolchain + model directory manager (§16.5). */
+    this.localTools = new LocalTools({
+      directory: this.directory,
+      modelsDir: () => this.state.local.modelsDir || defaultModelsDir(this.directory),
+      logger: this.log,
+    })
     /** Live run records keyed by canvas key (§13.1), polled by the UI. */
     this.runs = new Map()
+    /** Short-lived repository catalog cache keyed by source|base|branch (§16.4). */
+    this.repoCatalogCache = new Map()
   }
 
   /* -------------------------------------------------------------- lifecycle */
@@ -184,6 +204,7 @@ class VcgStudio {
       }
     }
     this.runs.clear()
+    this.localTools?.dispose?.()
     void this.persist()
   }
 
@@ -373,7 +394,7 @@ class VcgStudio {
           maxTokens,
           signal: signal ?? this.abort.signal,
         })
-        return { text: result.text, provider: provider.id, model: result.model ?? model }
+        return { text: result.text, provider: provider.id, model: result.model ?? model, usage: result.usage }
       }
       errors.push(`Provider「${provider.label}」没有可用的文本 API 地址或 API Key`)
     } catch (error) {
@@ -411,6 +432,14 @@ class VcgStudio {
       }
     }
     throw new Error(`文本生成失败：${errors[errors.length - 1] ?? '没有可用的文本模型'}`)
+  }
+
+  /** Local tool bridge for §16.6 pure-local executors (no network, no tokens). */
+  async localTool({ fn, params } = {}) {
+    if (fn === 'safetensorsInspect') {
+      return this.localTools.inspectSafetensors({ file: params?.model_file ?? params?.file })
+    }
+    throw new Error(`未知本地执行器：${fn || '(空)'}`)
   }
 
   /* ------------------------------------------------------------- directories */
@@ -663,6 +692,7 @@ class VcgStudio {
       version: this.state.version,
       outputDir: this.outputDirName(),
       proMode: this.state.proMode === true,
+      devMode: this.state.devMode === true,
       local: { ...this.state.local },
       defaults: { ...this.state.defaults },
       providers: this.publicProviders(),
@@ -717,11 +747,33 @@ class VcgStudio {
       if (patch.local.enabled !== undefined) this.state.local.enabled = patch.local.enabled === true
       if (typeof patch.local.comfyuiUrl === 'string') this.state.local.comfyuiUrl = normalizeBaseUrl(patch.local.comfyuiUrl)
       if (patch.local.timeoutMs !== undefined) this.state.local.timeoutMs = clamp(Number(patch.local.timeoutMs) || 600000, 30000, 3600000)
+      if (typeof patch.local.modelsDir === 'string') {
+        const raw = patch.local.modelsDir.trim()
+        if (raw === '') {
+          this.state.local.modelsDir = defaultModelsDir(this.directory)
+        } else {
+          const next = isAbsolute(raw) ? resolve(raw) : resolve(this.workingRoot(), raw)
+          this.state.local.modelsDir = next
+        }
+      }
+      if (patch.local.autoInstall !== undefined) this.state.local.autoInstall = patch.local.autoInstall === true
     }
     if (patch.proMode !== undefined) this.state.proMode = patch.proMode === true
+    if (patch.devMode !== undefined) {
+      this.state.devMode = patch.devMode === true
+      // Turning developer mode off immediately returns to the reviewed branch.
+      if (this.state.devMode !== true) this.state.nodeRepo.branch = 'main'
+    }
     if (isPlainObject(patch.nodeRepo)) {
       if (typeof patch.nodeRepo.githubBase === 'string') this.state.nodeRepo.githubBase = patch.nodeRepo.githubBase.trim()
       if (typeof patch.nodeRepo.giteaBase === 'string') this.state.nodeRepo.giteaBase = patch.nodeRepo.giteaBase.trim()
+      if (typeof patch.nodeRepo.branch === 'string') {
+        const branch = normalizeRepoBranch(patch.nodeRepo.branch)
+        if (branch !== 'main' && this.state.devMode !== true) {
+          throw new Error('只能使用 main 分支的节点仓库：切换 dev/bug/recheck 分支需要先打开「开发者模式」')
+        }
+        this.state.nodeRepo.branch = branch
+      }
     }
     if (patch.outputDir !== undefined) {
       const next = normalizeOutputDir(patch.outputDir)
@@ -746,6 +798,60 @@ class VcgStudio {
     return { ...result, providerId: provider.id }
   }
 
+  /* ------------------------------------------------------------ local tools */
+
+  /** All §16.5 local tool/model RPCs require pro mode. */
+  ensureProMode(feature = '本地工具与模型') {
+    if (this.state.proMode !== true) {
+      throw new Error(`${feature}需要先打开「专业模式」（设置 → VCG 视觉控制生成器 → 专业模式）`)
+    }
+  }
+
+  /** §16.5: detect python3 / pip / torch / safetensors / cuda + disk + models dir. */
+  async toolsStatus() {
+    this.ensureProMode('本地工具与模型检测')
+    return this.localTools.status()
+  }
+
+  /** §16.5: start one pip install (torch CPU / safetensors / all). */
+  async toolsInstall(args = {}) {
+    this.ensureProMode('安装本地工具')
+    return this.localTools.install(args?.component, { dryRun: args?.dryRun === true })
+  }
+
+  /** §16.5: list weight files in the local model directory. */
+  async modelsList() {
+    this.ensureProMode('模型目录')
+    const models = await this.localTools.listModels()
+    return { models }
+  }
+
+  /** §16.5: download one model file (https, trusted source or explicit confirm). */
+  async modelsDownload(args = {}) {
+    this.ensureProMode('模型下载')
+    return this.localTools.downloadModel({
+      url: args?.url,
+      filename: args?.filename,
+      sha256: args?.sha256,
+      size: args?.size,
+      format: args?.format,
+      confirmUntrusted: args?.confirmUntrusted === true,
+      overwrite: args?.overwrite === true,
+      signal: this.abort.signal,
+    })
+  }
+
+  /** §16.5: whether one URL points at a trusted model source. */
+  async modelsTrust(args = {}) {
+    this.ensureProMode('模型来源校验')
+    const verdict = await this.localTools.trustFor(args?.url)
+    return {
+      trusted: verdict.trusted,
+      host: verdict.host,
+      registryUpdatedAt: verdict.registryUpdatedAt ?? '',
+    }
+  }
+
   /* ------------------------------------------------------------------ nodes */
 
   listNodes() {
@@ -763,31 +869,72 @@ class VcgStudio {
   /** Sync the node repository from GitHub/Gitea (or an explicit URL). */
   async syncNodeRepo(args = {}) {
     const requested = typeof args?.source === 'string' ? args.source.trim() : ''
-    let base = ''
-    let sourceName = ''
-    if (/^https?:\/\//i.test(requested)) {
-      base = requested
-      sourceName = 'custom'
-    } else if (requested === 'github' || requested === 'gitea') {
-      sourceName = requested
-      base = requested === 'github' ? this.state.nodeRepo.githubBase : this.state.nodeRepo.giteaBase
-    } else {
-      if (this.state.nodeRepo.githubBase !== '') {
-        base = this.state.nodeRepo.githubBase
-        sourceName = 'github'
-      } else if (this.state.nodeRepo.giteaBase !== '') {
-        base = this.state.nodeRepo.giteaBase
-        sourceName = 'gitea'
-      }
+    const { base, branchBase, source: sourceName, branch } = this.resolveRepoSelection(requested, args?.branch)
+    if (sourceName === 'custom' && this.state.devMode !== true) {
+      throw new Error('从自定义地址（未认证第三方来源）同步节点仓库需要先打开「开发者模式」')
     }
-    if (base === '') throw new Error('未配置节点仓库地址：请到「设置 → VCG 视觉控制生成器」填写 GitHub/Gitea 节点仓库地址')
-    const result = await this.nodes.sync({ base, source: sourceName, signal: this.abort.signal })
+    const result = await this.nodes.sync({ base, source: sourceName, branch, signal: this.abort.signal })
+    if (!Array.isArray(result.warnings)) result.warnings = []
     if (result.ok !== false) {
       this.state.nodeRepo.lastSyncAt = result.syncedAt ?? nowIso()
       this.state.nodeRepo.source = sourceName
+      this.state.nodeRepo.branch = normalizeRepoBranch(result.branch ?? branch)
+      // §16.5: keep the trusted model-source registry next to the node cache.
+      try {
+        const trusted = await fetchJson(joinUrl(result.branchBase ?? branchBase, 'trusted-sources.json'), {
+          timeoutMs: 10000,
+          signal: this.abort.signal,
+        })
+        await this.localTools.saveTrustedRegistry(trusted)
+      } catch (error) {
+        result.warnings.push(`可信模型源清单拉取失败：${messageOf(error)}`)
+      }
       await this.persist()
     }
     return result
+  }
+
+  /**
+   * §16.4 RPC: availability of every known repository branch.
+   * Returns `[{branch, available, manifestVersion?, nodeCount?, workflowCount?, error?}]`.
+   */
+  async repoBranches(args = {}) {
+    const requested = typeof args?.source === 'string' ? args.source.trim() : ''
+    const { base } = this.repoTarget(requested)
+    return Promise.all(
+      REPO_BRANCHES.map(async (branch) => {
+        try {
+          const branchBase = resolveRepoBranchBase(base, branch)
+          const manifest = await fetchJson(joinUrl(branchBase, 'manifest.json'), { timeoutMs: 12000, signal: this.abort.signal })
+          const nodeCount = Array.isArray(manifest?.nodes) ? manifest.nodes.length : 0
+          const workflowCount = Array.isArray(manifest?.workflows) ? manifest.workflows.length : 0
+          return {
+            branch,
+            available: true,
+            manifestVersion: String(manifest?.version ?? ''),
+            nodeCount,
+            workflowCount,
+          }
+        } catch (error) {
+          return { branch, available: false, error: messageOf(error) }
+        }
+      }),
+    )
+  }
+
+  /** §16.4 RPC: switch the active repository branch (non-main needs devMode). */
+  async setRepoBranch(args = {}) {
+    const branch = normalizeRepoBranch(args?.branch)
+    if (String(args?.branch ?? '').trim() !== branch) {
+      throw new Error(`未知节点仓库分支：${String(args?.branch ?? '').trim() || '(空)'}（允许：${REPO_BRANCHES.join('/')}）`)
+    }
+    if (branch !== 'main' && this.state.devMode !== true) {
+      throw new Error('切换 dev/bug/recheck 分支需要先打开「开发者模式」（设置 → VCG 视觉控制生成器 → 开发者模式）')
+    }
+    this.state.nodeRepo.branch = branch
+    this.repoCatalogCache.clear()
+    await this.persist()
+    return { branch, state: this.publicState() }
   }
 
   /** Import one custom node definition (§3, pro mode only). */
@@ -802,6 +949,13 @@ class VcgStudio {
       } catch (error) {
         throw new Error(`节点 JSON 解析失败：${messageOf(error)}`)
       }
+    }
+    // §16.4: unreviewed third-party origins are developer-mode only.
+    const origin = String(args?.repoBranch ?? args?.branch ?? '').trim()
+    const originSource = String(args?.source ?? '').trim()
+    const untrustedOrigin = (origin !== '' && origin !== 'main') || originSource === 'custom' || /^https?:\/\//i.test(originSource)
+    if (untrustedOrigin && this.state.devMode !== true) {
+      throw new Error('导入未认证第三方节点（dev/bug/recheck 分支或自定义地址）需要先打开「开发者模式」')
     }
     const def = prepareImportedNode(raw, { proMode: this.state.proMode })
     const existing = this.nodes.nodeById(def.id)
@@ -1027,6 +1181,8 @@ class VcgStudio {
       currentNodeId: '',
       error: '',
       nodes: {},
+      // §16.7: run-level token usage summary (zeros until a cloud call reports).
+      usage: emptyUsage(),
     }
     this.runs.set(key, record)
     // Bounded memory: keep the most recent records only (running ones stay).
@@ -1043,6 +1199,7 @@ class VcgStudio {
   /** Normalize one engine result into the record node shape (§13.1). */
   runNodeRecord(result) {
     const value = isPlainObject(result) ? result : {}
+    const usage = normalizeUsage(value.usage)
     return {
       status: value.status === 'error' ? 'error' : value.status === 'running' ? 'running' : 'done',
       ms: Number.isFinite(value.ms) ? value.ms : 0,
@@ -1051,6 +1208,7 @@ class VcgStudio {
       video: value.video ?? null,
       error: typeof value.error === 'string' ? value.error : '',
       skipped: value.skipped === true,
+      ...(usage ? { usage } : {}),
     }
   }
 
@@ -1075,6 +1233,7 @@ class VcgStudio {
       case 'node-done': {
         if (nodeId === '') break
         record.nodes[nodeId] = this.runNodeRecord(event.result)
+        addUsage(record.usage, event.result?.usage)
         if (record.currentNodeId === nodeId) record.currentNodeId = ''
         break
       }
@@ -1121,6 +1280,10 @@ class VcgStudio {
     record.error = String(result.error ?? result.result?.error ?? '')
     record.finishedAt = nowIso()
     record.currentNodeId = ''
+    // The engine-level summary is authoritative; fall back to the aggregate
+    // built from node-done events (or the single-node result's usage).
+    const usage = normalizeUsage(result.usage) ?? normalizeUsage(result.result?.usage)
+    if (usage) record.usage = usage
   }
 
   /** §13.1 RPC: latest run record for one canvas key (read-only). */
@@ -1173,7 +1336,7 @@ class VcgStudio {
         onEvent: (event) => this.applyRunEvent(record, event),
       })
       this.finishRunRecord(record, value)
-      return { result: value.result, order: value.order }
+      return { result: value.result, order: value.order, usage: normalizeUsage(value.usage) ?? record.usage }
     } catch (error) {
       this.failRunRecord(record, error)
       throw error
@@ -1352,30 +1515,59 @@ class VcgStudio {
     throw new Error('未配置节点仓库地址：请到「设置 → VCG 视觉控制生成器 → 节点仓库」填写 GitHub/Gitea 仓库地址')
   }
 
+  /**
+   * Resolve one source selector + branch into the raw base to fetch (§16.4).
+   * Non-main branches require developer mode; custom URLs are kept as-is.
+   */
+  resolveRepoSelection(requested, branchArg) {
+    const { base, source } = this.repoTarget(requested)
+    let fromUrl = ''
+    try {
+      const segments = new URL(base).pathname.split('/').filter(Boolean)
+      const last = segments[segments.length - 1] ?? ''
+      if (REPO_BRANCHES.includes(last)) fromUrl = last
+    } catch {
+      /* repoTarget already validated custom URLs loosely */
+    }
+    const explicitBranch = typeof branchArg === 'string' ? branchArg.trim() : ''
+    if (explicitBranch !== '' && !REPO_BRANCHES.includes(explicitBranch)) {
+      throw new Error(`未知节点仓库分支：${explicitBranch}（允许：${REPO_BRANCHES.join('/')}）`)
+    }
+    const branch = normalizeRepoBranch(
+      explicitBranch !== '' ? explicitBranch : source === 'custom' && fromUrl !== '' ? fromUrl : this.state.nodeRepo.branch,
+    )
+    if (branch !== 'main' && this.state.devMode !== true) {
+      throw new Error(`当前只能使用 main 分支的节点仓库：切换 dev/bug/recheck 分支需要先打开「开发者模式」`)
+    }
+    const branchBase = resolveRepoBranchBase(base, branch)
+    return { base, branchBase, source, branch }
+  }
+
   /** Browse the node repository without installing anything (60s cache). */
   async listRepoNodes(args = {}) {
-    const { base, source } = this.repoTarget(args?.source)
-    const cacheKey = `${source}|${base}`
+    const { base, branchBase, source, branch } = this.resolveRepoSelection(args?.source, args?.branch)
+    const cacheKey = `${source}|${branchBase}|${branch}`
     const cached = this.repoCatalogCache.get(cacheKey)
     if (args?.force !== true && cached && Date.now() - cached.at < 60000) return cached.value
     const signal = this.abort.signal
     let manifest
     try {
-      manifest = await fetchJson(joinUrl(base, 'manifest.json'), { timeoutMs: 15000, signal })
+      manifest = await fetchJson(joinUrl(branchBase, 'manifest.json'), { timeoutMs: 15000, signal })
     } catch (error) {
-      throw new Error(`拉取节点仓库失败（${base}）：${messageOf(error)}`)
+      throw new Error(`拉取节点仓库失败（${branchBase}）：${messageOf(error)}`)
     }
+    const repoExtra = branch === 'main' ? {} : { repoBranch: branch, reviewState: 'unreviewed' }
     const warnings = []
     const nodeIds = Array.isArray(manifest?.nodes) ? manifest.nodes.filter((id) => typeof id === 'string') : []
     const nodes = []
     for (const id of nodeIds) {
       try {
-        const raw = await fetchJson(joinUrl(base, `nodes/${id}.json`), { timeoutMs: 15000, signal })
+        const raw = await fetchJson(joinUrl(branchBase, `nodes/${id}.json`), { timeoutMs: 15000, signal })
         const def = validateNodeDef(raw, { where: `仓库节点 ${id}`, source: 'repo' })
         const existing = this.nodes.nodeById(def.id)
         const requiresPro = def.executor?.kind === 'http'
         nodes.push({
-          ...decorateNode(def, 'repo'),
+          ...decorateNode(def, 'repo', repoExtra),
           installed: Boolean(existing),
           installedSource: existing?.source ?? '',
           requiresPro,
@@ -1393,7 +1585,7 @@ class VcgStudio {
       let raw = null
       for (const name of candidates) {
         try {
-          raw = await fetchJson(joinUrl(base, `workflows/${name}.json`), { timeoutMs: 15000, signal })
+          raw = await fetchJson(joinUrl(branchBase, `workflows/${name}.json`), { timeoutMs: 15000, signal })
           break
         } catch {
           /* try the next naming convention */
@@ -1415,6 +1607,8 @@ class VcgStudio {
     const value = {
       source,
       base,
+      branch,
+      branchBase,
       version: String(manifest?.version ?? ''),
       fetchedAt: nowIso(),
       nodes,
@@ -1432,15 +1626,22 @@ class VcgStudio {
     if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new Error(`节点 id 非法：${id}`)
     const existing = this.nodes.nodeById(id)
     if (existing) return { node: existing, installed: true, skipped: true, source: existing.source }
-    const { base, source } = this.repoTarget(args?.source)
-    const raw = await fetchJson(joinUrl(base, `nodes/${id}.json`), { timeoutMs: 15000, signal: this.abort.signal })
+    const { base, branchBase, source, branch } = this.resolveRepoSelection(args?.source, args?.branch)
+    if (source === 'custom' && this.state.devMode !== true) {
+      throw new Error('从自定义地址（未认证第三方来源）安装节点需要先打开「开发者模式」')
+    }
+    const raw = await fetchJson(joinUrl(branchBase, `nodes/${id}.json`), { timeoutMs: 15000, signal: this.abort.signal })
     const def = validateNodeDef(raw, { where: `仓库节点 ${id}`, source: 'repo' })
     if (def.executor?.kind === 'http' && this.state.proMode !== true) {
       throw new Error(`节点「${def.nameZh || def.name}」是 HTTP 自定义节点，导入需要先打开「专业模式」（设置 → VCG 视觉控制生成器 → 专业模式）`)
     }
-    const node = await this.nodes.saveCustom(def, { allowHttp: true })
+    const node = await this.nodes.saveCustom(def, {
+      allowHttp: true,
+      repoBranch: branch,
+      reviewState: branch === 'main' ? '' : 'unreviewed',
+    })
     this.repoCatalogCache.clear()
-    return { node, installed: true, skipped: false, source }
+    return { node, installed: true, skipped: false, source, branch, base }
   }
 
   listOutputs(args = {}) {
@@ -1517,6 +1718,8 @@ class VcgStudio {
       testProvider: (args) => this.testProvider(args),
       listNodes: () => this.listNodes(),
       syncNodeRepo: (args) => this.syncNodeRepo(args),
+      repoBranches: (args) => this.repoBranches(args),
+      setRepoBranch: (args) => this.setRepoBranch(args),
       importNode: (args) => this.importNode(args),
       removeNode: (args) => this.removeNode(args),
       listWorkflows: () => this.listWorkflows(),
@@ -1533,6 +1736,11 @@ class VcgStudio {
       debugWorkflow: (args) => this.debugWorkflow(args),
       listRepoNodes: (args) => this.listRepoNodes(args),
       installRepoNode: (args) => this.installRepoNode(args),
+      toolsStatus: () => this.toolsStatus(),
+      toolsInstall: (args) => this.toolsInstall(args),
+      modelsList: () => this.modelsList(),
+      modelsDownload: (args) => this.modelsDownload(args),
+      modelsTrust: (args) => this.modelsTrust(args),
       listOutputs: (args) => this.listOutputs(args),
       readOutput: (args) => this.readOutput(args),
       openOutputDir: (args) => this.openOutputDir(args),

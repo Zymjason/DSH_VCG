@@ -480,7 +480,7 @@
     )
   }
 
-  function NodeCard({ node, installed, blocked, importable, selected, locked, onToggle, onOpen }) {
+  function NodeCard({ node, installed, blocked, devLocked, unreviewed, importable, selected, locked, onToggle, onOpen }) {
     const inputs = asArray(node.inputs)
     const outputs = asArray(node.outputs)
     const classes = ['vcg-repo-card']
@@ -530,6 +530,16 @@
         h(Badge, null, categoryText(node.category)),
         h(Badge, null, t('repoPortsValue', { inputs: inputs.length, outputs: outputs.length })),
         h(Badge, null, t('repoParamsCount', { count: asArray(node.params).length })),
+        unreviewed
+          ? h(
+              Badge,
+              {
+                color: 'var(--dsw-alias-state-warn-primary)',
+                title: str(node.repoBranch) ? t('cvUnreviewedFrom', { branch: str(node.repoBranch) }) : t('cvDevModeHint'),
+              },
+              t('cvUnreviewed'),
+            )
+          : null,
         requiresProMode(node)
           ? h(
               Badge,
@@ -546,9 +556,11 @@
           { className: 'vcg-repo-card-state' },
           installed
             ? h(Badge, { color: 'var(--dsw-alias-state-success-primary)' }, t('repoInstalled'))
-            : blocked
-              ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('repoNeedPro'))
-              : h(Badge, null, t('repoAvailable')),
+            : devLocked
+              ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvUnreviewed'))
+              : blocked
+                ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('repoNeedPro'))
+                : h(Badge, null, t('repoAvailable')),
         ),
         h(
           Button,
@@ -566,7 +578,7 @@
     )
   }
 
-  function NodeDetail({ node, installed, blocked, importable, installing, error, onOpenSettings }) {
+  function NodeDetail({ node, installed, blocked, devLocked, unreviewed, importable, installing, error, onOpenSettings }) {
     const inputs = asArray(node.inputs)
     const outputs = asArray(node.outputs)
     const params = asArray(node.params)
@@ -635,6 +647,9 @@
       str(node.source)
         ? h(KVRow, { key: 'source', label: t('repoSourceBadge'), children: str(node.source) })
         : null,
+      str(node.repoBranch)
+        ? h(KVRow, { key: 'branch', label: t('cvBranchShort'), children: str(node.repoBranch) })
+        : null,
     ]
 
     return h(
@@ -660,9 +675,34 @@
               ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('repoNeedPro'))
               : h(Badge, null, t('repoAvailable')),
           requiresProMode(node) ? h(Badge, { color: 'var(--dsw-alias-brand-primary)' }, t('repoHttpNode')) : null,
+          unreviewed
+            ? h(
+                Badge,
+                {
+                  color: 'var(--dsw-alias-state-warn-primary)',
+                  title: str(node.repoBranch) ? t('cvUnreviewedFrom', { branch: str(node.repoBranch) }) : t('cvDevModeHint'),
+                },
+                t('cvUnreviewed'),
+              )
+            : null,
         ),
       ),
       h('div', { className: 'vcg-repo-detail-desc' }, str(node.description) || t('repoNoDescription')),
+      unreviewed
+        ? h(
+            Banner,
+            {
+              kind: 'warn',
+              title: t('cvBranchUnreviewed'),
+              action: devLocked ? h(Button, { size: 'sm', onClick: onOpenSettings }, t('repoOpenSettings')) : null,
+            },
+            devLocked
+              ? t('cvUnreviewedNodeHint')
+              : str(node.repoBranch)
+                ? t('cvUnreviewedFrom', { branch: str(node.repoBranch) })
+                : t('cvDevModeHint'),
+          )
+        : null,
       blocked
         ? h(
             Banner,
@@ -989,7 +1029,14 @@
 
     const nodeRepoState = store.state && typeof store.state.nodeRepo === 'object' ? store.state.nodeRepo : {}
     const proMode = Boolean(store.state && store.state.proMode)
+    const devMode = typeof V.readDevMode === 'function' ? V.readDevMode(store.state) : Boolean(store.state && store.state.devMode)
+    const branch = typeof V.readRepoBranch === 'function' ? V.readRepoBranch(store.state) : str(nodeRepoState.branch) || 'main'
     const configured = Boolean(str(nodeRepoState.githubBase) || str(nodeRepoState.giteaBase))
+    const defaultBranches = V.consts && Array.isArray(V.consts.REPO_BRANCHES) ? V.consts.REPO_BRANCHES.slice() : ['main', 'dev', 'bug', 'recheck']
+    const [branches, setBranches] = React.useState(defaultBranches)
+    const [branchInfo, setBranchInfo] = React.useState([])
+    const [branchBusy, setBranchBusy] = React.useState(false)
+    const [branchError, setBranchError] = React.useState('')
 
     /* --- data loading --- */
 
@@ -1035,6 +1082,37 @@
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [source])
 
+    /* §16.2 分支清单：宿主暂不支持 repoBranches 时退回内置主/开发/缺陷/复核分支。 */
+    React.useEffect(() => {
+      let alive = true
+      V.rpc('repoBranches')
+        .then((result) => {
+          if (!alive || !result) return
+          const raw = Array.isArray(result) ? result : asArray(result.branches)
+          const infos = raw
+            .map((item) =>
+              typeof item === 'string'
+                ? { branch: item }
+                : {
+                    branch: str(item && (item.branch || item.name || item.id)),
+                    available: item && item.available !== false,
+                    current: Boolean(item && item.current),
+                    nodeCount: item && item.nodeCount,
+                    workflowCount: item && item.workflowCount,
+                    error: str(item && item.error),
+                  },
+            )
+            .filter((item) => item.branch)
+          if (!infos.length) return
+          setBranchInfo(infos)
+          setBranches(infos.map((item) => item.branch))
+        })
+        .catch(() => {})
+      return () => {
+        alive = false
+      }
+    }, [])
+
     React.useEffect(
       () => () => {
         if (deleteTimer.current) clearTimeout(deleteTimer.current)
@@ -1070,7 +1148,13 @@
     }, [nodesAsync.data])
 
     const isInstalled = (node) => Boolean(node && (node.installed === true || installedIds.has(str(node.id))))
-    const isBlocked = (node) => requiresProMode(node) && !proMode
+    const isUnreviewedNode = (node) =>
+      typeof V.isUnreviewed === 'function'
+        ? V.isUnreviewed(node)
+        : Boolean(node && ((str(node.repoBranch) && str(node.repoBranch) !== 'main') || node.reviewState === 'unreviewed'))
+    /* §16.2 开发者模式关闭时，未审核分支的节点不可导入。 */
+    const isDevLocked = (node) => isUnreviewedNode(node) && !devMode
+    const isBlocked = (node) => Boolean(node) && ((requiresProMode(node) && !proMode) || isDevLocked(node))
     const isImportable = (node) => Boolean(node) && !isInstalled(node) && !isBlocked(node) && node.canImport !== false
 
     const categoryCounts = React.useMemo(() => {
@@ -1121,6 +1205,8 @@
     const detailNode = detailId !== '' ? nodeById.get(detailId) : null
     const detailInstalled = detailNode ? isInstalled(detailNode) : false
     const detailBlocked = detailNode && !detailInstalled ? isBlocked(detailNode) : false
+    const detailDevLocked = detailNode && !detailInstalled ? isDevLocked(detailNode) : false
+    const detailUnreviewed = detailNode ? isUnreviewedNode(detailNode) : false
     const detailImportable = detailNode ? isImportable(detailNode) : false
     const detailTitle = detailNode ? nodeTitle(detailNode) : ''
 
@@ -1194,7 +1280,9 @@
       const resolved = repoData && repoData.source ? str(repoData.source) : ''
       const chosen = source !== 'auto' ? source : ''
       const reposSource = resolved || chosen
-      return reposSource ? { id: id, source: reposSource } : { id: id }
+      const args = { id: id, branch: branch }
+      if (reposSource) args.source = reposSource
+      return args
     }
 
     function nameOfResult(result, fallbackNode) {
@@ -1275,6 +1363,36 @@
         items: succeeded.concat(failed),
       })
       if (okCount > 0) reloadAfterInstall()
+    }
+
+    /* §16.2 切换分支：非 main 需要开发者模式；切换后重新拉取仓库与节点列表。 */
+    async function changeBranch(next) {
+      const target = str(next) || 'main'
+      if (branchBusy || target === branch) return
+      if (!devMode && target !== 'main') {
+        showNotice({ kind: 'warn', title: t('cvBranch'), message: t('cvBranchLocked') })
+        return
+      }
+      const info = branchInfo.find((item) => item.branch === target)
+      if (info && info.available === false) {
+        showNotice({ kind: 'warn', title: t('cvBranch'), message: t('cvBranchUnavailable') + (info.error ? '：' + info.error : '') })
+        return
+      }
+      setBranchBusy(true)
+      setBranchError('')
+      try {
+        const result = await V.rpc('setRepoBranch', { branch: target })
+        if (result && result.state) V.setStore({ state: result.state, loaded: true, loading: false, error: '' })
+        else await V.refresh().catch(() => {})
+        nodesAsync.reload()
+        await loadRepo(true)
+        showNotice({ kind: 'success', title: t('cvBranch'), message: t('cvBranchChanged', { branch: target }) })
+      } catch (error) {
+        setBranchError(msgOf(error))
+        showNotice({ kind: 'error', title: t('cvBranchFailed'), message: msgOf(error) })
+      } finally {
+        setBranchBusy(false)
+      }
     }
 
     async function syncAll() {
@@ -1363,6 +1481,9 @@
         proMode
           ? h(Badge, { color: 'var(--dsw-alias-state-success-primary)' }, t('repoProOn'))
           : h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('repoProOff')),
+        devMode
+          ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvDevModeBadge'))
+          : h(Badge, null, t('cvBranchShort') + '：' + branch),
         h(
           Button,
           {
@@ -1405,6 +1526,37 @@
         ],
         onChange: changeSource,
       }),
+    )
+
+    /* §16.2 分支选择器：开发者模式关闭时锁定 main 并提示。 */
+    const branchMeta = new Map(branchInfo.map((item) => [item.branch, item]))
+    const branchOptions = branches.slice()
+    if (branchOptions.indexOf(branch) < 0) branchOptions.push(branch)
+    if (branchOptions.indexOf('main') < 0) branchOptions.unshift('main')
+    const branchLabel = (name) => {
+      const meta = branchMeta.get(name) || {}
+      let label = name === 'main' ? t('cvBranchMain') : name
+      if (meta.available === false) label += ' · ' + t('cvBranchUnavailable')
+      else if (Number.isFinite(Number(meta.nodeCount))) label += ' · ' + Number(meta.nodeCount) + ' ' + t('nodes')
+      if (!devMode && name !== 'main') label += ' 🔒'
+      return label
+    }
+    const branchSelect = h(
+      'div',
+      { className: 'vcg-repo-branch-select' },
+      h('span', { className: 'vcg-repo-source-label' }, t('cvBranch')),
+      h(Select, {
+        value: branch,
+        options: branchOptions.map((name) => ({ value: name, label: branchLabel(name) })),
+        disabled: !devMode || branchBusy,
+        onChange: changeBranch,
+      }),
+      branchBusy ? h(Spinner, { size: 12 }) : null,
+      !devMode
+        ? h('span', { className: 'vcg-repo-branch-lock', title: t('cvDevModeOnlyMain') }, t('cvBranchLocked'))
+        : branch !== 'main'
+          ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvUnreviewed'))
+          : null,
     )
 
     const addressRows = h(
@@ -1467,7 +1619,7 @@
     const toolbar = h(
       'div',
       { className: 'vcg-repo-toolbar' },
-      h('div', { className: 'vcg-repo-toolbar-main' }, sourceSelect, statusChips),
+      h('div', { className: 'vcg-repo-toolbar-main' }, sourceSelect, branchSelect, statusChips),
       addressRows,
     )
 
@@ -1581,6 +1733,8 @@
             node: node,
             installed: isInstalled(node),
             blocked: isBlocked(node) && !isInstalled(node),
+            devLocked: isDevLocked(node) && !isInstalled(node),
+            unreviewed: isUnreviewedNode(node),
             importable: isImportable(node),
             selected: Boolean(selected[str(node.id)]),
             locked: bulkBusy,
@@ -1653,6 +1807,34 @@
         ),
       )
     }
+    if (branch !== 'main') {
+      banners.push(
+        h(
+          Banner,
+          {
+            key: 'branch-warn',
+            kind: 'warn',
+            title: t('cvBranchUnreviewed'),
+            action: !devMode ? h(Button, { size: 'sm', onClick: openSettings }, t('repoOpenSettings')) : null,
+          },
+          t('cvBranchUnreviewedDesc', { branch: branch }),
+        ),
+      )
+    }
+    if (branchError) {
+      banners.push(
+        h(
+          Banner,
+          {
+            key: 'branch-error',
+            kind: 'error',
+            title: t('cvBranchFailed'),
+            action: h(Button, { size: 'sm', onClick: () => setBranchError('') }, t('close')),
+          },
+          branchError,
+        ),
+      )
+    }
     if (repoError && repoData) {
       banners.push(
         h(
@@ -1697,9 +1879,11 @@
             { className: 'vcg-repo-modal-hint' },
             detailInstalled
               ? t('repoInstalledHint')
-              : detailBlocked
-                ? t('repoProHint')
-                : detailImportable
+              : detailDevLocked
+                ? t('cvUnreviewedNodeHint')
+                : detailBlocked
+                  ? t('repoProHint')
+                  : detailImportable
                   ? ''
                   : t('repoCannotImport'),
           ),
@@ -1776,6 +1960,8 @@
               node: detailNode,
               installed: detailInstalled,
               blocked: detailBlocked,
+              devLocked: detailDevLocked,
+              unreviewed: detailUnreviewed,
               importable: detailImportable,
               installing: installingId === str(detailNode.id),
               error: installError,
@@ -1803,6 +1989,9 @@
 .vcg-repo-source-select{display:flex;align-items:center;gap:7px;flex:none}
 .vcg-repo-source-label{font-size:12px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
 .vcg-repo-source-select .vcg-select{width:180px;padding:4px 8px;font-size:12px}
+.vcg-repo-branch-select{display:flex;align-items:center;gap:7px;flex:none;min-width:0}
+.vcg-repo-branch-select .vcg-select{width:190px;padding:4px 8px;font-size:12px}
+.vcg-repo-branch-lock{font-size:10.5px;color:var(--dsw-alias-label-secondary);opacity:.9;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vcg-repo-status{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .vcg-repo-addresses{display:flex;align-items:center;gap:6px 16px;flex-wrap:wrap;flex:1 1 420px;justify-content:flex-end;min-width:0}
 .vcg-repo-address{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%}

@@ -104,6 +104,17 @@
     cvMore: '更多',
     cvMoreEngine: '引擎模式',
     cvGraphStats: '图统计',
+    /* §16.4 Token 统计条 */
+    cvTokens: '本次运行 Token',
+    cvTokensInput: '输入 {n}',
+    cvTokensOutput: '输出 {n}',
+    cvTokensTotal: '合计 {n}',
+    cvTokensEmpty: '本次运行未返回用量',
+    cvTokensNodes: '节点 {done}/{total}',
+    cvTokensRunning: '运行中 {n}',
+    cvTokensFailed: '失败 {n}',
+    cvTokensMs: '耗时 {s}',
+    cvTokensTitle: '本次运行的 Token 用量（来自各节点结果的 usage）',
   }
   const enExtra = {
     cvNodeLibrary: 'Node library',
@@ -186,6 +197,17 @@
     cvMore: 'More',
     cvMoreEngine: 'Engine mode',
     cvGraphStats: 'Graph',
+    /* §16.4 token bar */
+    cvTokens: 'Tokens this run',
+    cvTokensInput: 'input {n}',
+    cvTokensOutput: 'output {n}',
+    cvTokensTotal: 'total {n}',
+    cvTokensEmpty: 'This run returned no usage',
+    cvTokensNodes: 'nodes {done}/{total}',
+    cvTokensRunning: 'running {n}',
+    cvTokensFailed: 'failed {n}',
+    cvTokensMs: 'elapsed {s}',
+    cvTokensTitle: 'Token usage of this run (from each node result usage)',
   }
   if (typeof V.addDict === 'function') V.addDict(zhExtra, enExtra)
 
@@ -669,6 +691,19 @@
 .vcg-cv-more-readonly{display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:11px;color:var(--dsw-alias-state-warn-primary)}
 
 /* ------------------------------------------------------------------ stage */
+.vcg-cv-tokens{display:flex;align-items:center;gap:10px;padding:3px 10px;min-height:26px;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font-size:11px;font-variant-numeric:tabular-nums;flex:none;overflow:hidden;user-select:none}
+.vcg-cv-tokens-main{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.vcg-cv-tokens-label{font-weight:700;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--dsw-alias-label-secondary);flex:none}
+.vcg-cv-token{color:var(--dsw-alias-label-primary);white-space:nowrap}
+.vcg-cv-token-in{color:var(--dsw-alias-state-business-primary)}
+.vcg-cv-token-out{color:var(--dsw-alias-state-success-primary)}
+.vcg-cv-token-total{font-weight:600}
+.vcg-cv-token-sep{opacity:.5}
+.vcg-cv-tokens-empty{color:var(--dsw-alias-label-secondary);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-cv-tokens-side{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none;overflow:hidden}
+.vcg-cv-tokens-chip{display:inline-flex;align-items:center;padding:0 6px;height:16px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);white-space:nowrap;font-size:10.5px}
+.vcg-cv-tokens-running{color:var(--dsw-alias-state-business-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-business-primary) 45%,transparent)}
+.vcg-cv-tokens-failed{color:var(--dsw-alias-state-error-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 45%,transparent)}
 .vcg-cv-stage-wrap{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--dsw-alias-bg-base)}
 .vcg-cv-stage{position:absolute;inset:0;overflow:hidden;outline:none;touch-action:none;cursor:default;user-select:none}
 .vcg-cv-stage.vcg-cv-panning{cursor:grabbing}
@@ -698,6 +733,8 @@
 .vcg-cv-node-title{flex:1;min-width:0;font-size:12.5px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text}
 .vcg-cv-title-input{flex:1;min-width:0;height:22px;border:1px solid var(--dsw-alias-brand-primary);border-radius:5px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-family:inherit;font-size:12px;padding:0 5px;outline:none}
 .vcg-cv-ms{font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;flex:none;white-space:nowrap}
+.vcg-cv-unreviewed{display:inline-flex;align-items:center;padding:0 4px;height:14px;border-radius:4px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-warn-primary) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 16%,transparent);color:var(--dsw-alias-state-warn-primary);font-size:9px;line-height:14px;font-weight:700;white-space:nowrap;flex:none}
+.vcg-cv-lib-unreviewed{flex:none;padding:0 4px;height:13px;border-radius:4px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-warn-primary) 55%,transparent);color:var(--dsw-alias-state-warn-primary);font-size:9px;line-height:13px;font-weight:700}
 .vcg-cv-engine{display:inline-flex;align-items:center;gap:3px;border:1px solid;border-radius:999px;padding:0 6px;height:18px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;background:transparent;flex:none;line-height:1;white-space:nowrap;transition:filter 100ms ease}
 .vcg-cv-engine:hover:not(:disabled){filter:brightness(1.15)}
 .vcg-cv-engine:disabled{cursor:default;opacity:.9}
@@ -749,6 +786,16 @@
 .vcg-cv-model-row .vcg-input,.vcg-cv-model-row .vcg-select{flex:1;min-width:0}
 .vcg-cv-model-act{width:22px;height:22px;border:1px solid var(--dsw-alias-border-l1);border-radius:6px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:none}
 .vcg-cv-model-act:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
+.vcg-cv-model-meta{font-size:9.5px;line-height:1.35;color:var(--dsw-alias-label-secondary);opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vcg-cv-model-decl{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--dsw-alias-border-l1);padding-top:4px;margin-top:1px}
+.vcg-cv-model-decl-title{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dsw-alias-label-secondary)}
+.vcg-cv-model-decl-row{display:flex;align-items:center;gap:4px;min-width:0;font-size:10.5px}
+.vcg-cv-model-decl-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-primary)}
+.vcg-cv-model-decl-size{color:var(--dsw-alias-label-secondary);flex:none;font-variant-numeric:tabular-nums}
+.vcg-cv-model-decl-ok{color:var(--dsw-alias-state-success-primary);flex:none;margin-left:auto;font-size:10px}
+.vcg-cv-model-dl{display:inline-flex;align-items:center;gap:3px;margin-left:auto;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-family:inherit;font-size:10px;line-height:16px;padding:0 5px;cursor:pointer;flex:none}
+.vcg-cv-model-dl:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
+.vcg-cv-model-dl:disabled{opacity:.5;cursor:default}
 
 /* ---------------------------------------------------------------- results */
 .vcg-cv-result{margin-top:2px;display:flex;flex-direction:column;gap:5px;border-top:1px dashed var(--dsw-alias-border-l1);padding-top:6px;user-select:text;min-width:0}
@@ -904,7 +951,7 @@
   /* ------------------------------------------------------------ ParamField */
 
   function ParamField(props) {
-    const { param, value, disabled, modelOptions } = props
+    const { param, value, disabled, modelOptions, defModels, modelsVersion, onDownloadRequest } = props
     if (!param || !param.id) return null
     const type = param.type || 'text'
     const onChange = (next) => props.onChange(param.id, next)
@@ -975,6 +1022,9 @@
         value: value === undefined || value === null ? '' : value,
         options: Array.isArray(param.options) && param.options.length ? param.options : modelOptions || [],
         disabled: disabled,
+        defModels: defModels,
+        modelsVersion: modelsVersion,
+        onDownloadRequest: onDownloadRequest,
         onChange,
       })
     } else {
@@ -995,14 +1045,105 @@
     )
   }
 
-  /** Model select from settings providers + free text fallback. */
+  /** modelsList 返回项 → 下载下拉项（§16.5）。 */
+  function modelFileEntries(list) {
+    const out = []
+    for (const entry of Array.isArray(list) ? list : []) {
+      if (!entry) continue
+      const filename = String(
+        (typeof entry === 'string' ? entry : entry.filename || entry.file || V.basename(entry.path || '') || '') || '',
+      ).trim()
+      if (!filename) continue
+      if (out.some((item) => item.filename === filename)) continue
+      out.push({
+        filename: filename,
+        name: typeof entry === 'string' ? filename : String(entry.name || filename),
+        label: filename,
+        size: typeof entry === 'object' ? entry.size : undefined,
+        format: typeof entry === 'object' ? entry.format || '' : '',
+      })
+    }
+    return out
+  }
+
+  /** 节点声明里可用于下载的模型（§16.3/§16.5）。 */
+  function modelDeclarations(list) {
+    const out = []
+    for (const entry of Array.isArray(list) ? list : []) {
+      if (!entry || typeof entry !== 'object') continue
+      const url = typeof entry.url === 'string' ? entry.url.trim() : ''
+      if (!url) continue
+      const filename = String(entry.filename || V.basename(url) || '').trim()
+      if (!filename) continue
+      out.push({
+        url: url,
+        filename: filename,
+        name: String(entry.name || filename),
+        sha256: typeof entry.sha256 === 'string' ? entry.sha256 : '',
+        size: entry.size,
+        format: typeof entry.format === 'string' ? entry.format : '',
+        license: typeof entry.license === 'string' ? entry.license : '',
+        required: entry.required === true,
+      })
+    }
+    return out
+  }
+
+  /**
+   * 模型参数（§16.5）：下拉优先展示本地已下载权重（modelsList），
+   * 其次保留 provider 模型 id；节点声明 models[] 时提供下载入口
+   * （不可信来源的二次确认由 V.ModelDownloadModal 负责）。
+   */
   function ModelParam(props) {
-    const { value, options, disabled } = props
-    const list = Array.isArray(options) ? options.slice() : []
-    if (value && list.indexOf(value) < 0) list.unshift(value)
-    const [free, setFree] = React.useState(() => list.length === 0 || Boolean(value && list.indexOf(value) < 0))
-    const selectOptions = list.concat([{ value: '__vcg_custom__', label: t('cvModelCustom') }])
-    if (!list.length) selectOptions.unshift({ value: '', label: '—' })
+    const { value, options, disabled, defModels, modelsVersion, onDownloadRequest } = props
+    const [downloaded, setDownloaded] = React.useState(null)
+    const [loadError, setLoadError] = React.useState('')
+    const [free, setFree] = React.useState(false)
+    const version = modelsVersion || 0
+
+    React.useEffect(() => {
+      let alive = true
+      V.rpc('modelsList')
+        .then((result) => {
+          if (!alive) return
+          setDownloaded(modelFileEntries(result && result.models))
+          setLoadError('')
+        })
+        .catch((error) => {
+          if (!alive) return
+          setDownloaded([])
+          setLoadError(V.messageOf(error))
+        })
+      return () => {
+        alive = false
+      }
+    }, [version])
+
+    const localFiles = downloaded || []
+    const localNames = localFiles.map((entry) => entry.filename)
+    const providerOptions = Array.isArray(options)
+      ? options.filter((entry) => typeof entry === 'string' && entry !== '')
+      : []
+    const current = value === undefined || value === null ? '' : String(value)
+    const selectOptions = localFiles.map((entry) => ({ value: entry.filename, label: entry.label }))
+    const known = new Set(localNames)
+    const pushValue = (entry) => {
+      if (!entry || known.has(entry)) return
+      known.add(entry)
+      selectOptions.push({ value: entry, label: entry })
+    }
+    pushValue(current)
+    for (const name of providerOptions) pushValue(name)
+    selectOptions.push({ value: '__vcg_custom__', label: t('cvModelCustom') })
+    if (!localFiles.length) selectOptions.unshift({ value: '', label: t('cvModelsNotDownloaded') })
+    const declared = modelDeclarations(defModels)
+    const meta = localFiles.length
+      ? t('cvModelsPick') + ' · ' + localFiles.length
+      : loadError
+        ? t('cvModelsNotDownloaded')
+        : t('cvModelsEmpty') + ' · ' + t('cvModelsSettingsHint')
+    const metaTitle = loadError || t('cvModelsSettingsHint')
+
     return h(
       'div',
       { className: 'vcg-cv-model' },
@@ -1011,14 +1152,14 @@
         { className: 'vcg-cv-model-row' },
         free
           ? h(TextInput, {
-              value: value || '',
+              value: current,
               placeholder: t('cvModelFree'),
               disabled: disabled,
               onChange: (next) => props.onChange(next),
               onKeyDown: stopEvent,
             })
           : h(Select, {
-              value: value || '',
+              value: current,
               options: selectOptions,
               disabled: disabled,
               onChange: (next) => {
@@ -1043,6 +1184,40 @@
           h(Glyph, { name: free ? 'layers' : 'edit', size: 11 }),
         ),
       ),
+      h('div', { className: 'vcg-cv-model-meta', title: metaTitle }, meta),
+      declared.length
+        ? h(
+            'div',
+            { className: 'vcg-cv-model-decl' },
+            h('div', { className: 'vcg-cv-model-decl-title' }, t('cvModelsDeclared')),
+            declared.map((decl) => {
+              const exists = localNames.indexOf(decl.filename) >= 0
+              return h(
+                'div',
+                { className: 'vcg-cv-model-decl-row', key: decl.filename },
+                h('span', { className: 'vcg-cv-model-decl-name', title: decl.url }, decl.filename),
+                decl.size !== undefined && decl.size !== null && decl.size !== ''
+                  ? h('span', { className: 'vcg-cv-model-decl-size' }, V.formatBytes(decl.size))
+                  : null,
+                exists
+                  ? h('span', { className: 'vcg-cv-model-decl-ok' }, t('cvModelsDownloaded'))
+                  : h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'vcg-cv-model-dl',
+                        title: t('cvModelsDownload'),
+                        disabled: disabled,
+                        onPointerDown: stopEvent,
+                        onClick: () => onDownloadRequest && onDownloadRequest(decl),
+                      },
+                      h(Glyph, { name: 'download', size: 10 }),
+                      t('cvModelsDownload'),
+                    ),
+              )
+            }),
+          )
+        : null,
     )
   }
 
@@ -1129,7 +1304,7 @@
   /* -------------------------------------------------------------- NodeCard */
 
   function NodeCard(props) {
-    const { node, def, result, selected, readOnly, connectedInputs, connect, hoverPort, modelOptions } = props
+    const { node, def, result, selected, readOnly, connectedInputs, connect, hoverPort, modelOptions, modelsVersion, onModelDownload } = props
     const [renaming, setRenaming] = React.useState(false)
     const [draft, setDraft] = React.useState('')
     const cancelledRef = React.useRef(false)
@@ -1145,6 +1320,8 @@
     const engineOverride = Boolean(node.engineOverride)
     const statusTitle = t(STATUS_LABEL_KEY[status] || 'cvStatusIdle')
     const paramsSource = node.params && typeof node.params === 'object' ? node.params : EMPTY_OBJECT
+    const sourceBranch = String((def && def.repoBranch) || node.repoBranch || '').trim()
+    const unreviewed = (typeof V.isUnreviewed === 'function' ? V.isUnreviewed(def) || V.isUnreviewed(node) : false)
 
     const header = h(
       'div',
@@ -1208,6 +1385,16 @@
             },
             title,
           ),
+      unreviewed
+        ? h(
+            'span',
+            {
+              className: 'vcg-cv-unreviewed',
+              title: sourceBranch ? t('cvUnreviewedFrom', { branch: sourceBranch }) : t('cvDevModeHint'),
+            },
+            t('cvUnreviewed'),
+          )
+        : null,
       status === 'running' || status === 'error' ? null : result && formatMs(result.ms) ? h('span', { className: 'vcg-cv-ms' }, formatMs(result.ms)) : null,
       h(
         'button',
@@ -1316,6 +1503,11 @@
               value: Object.prototype.hasOwnProperty.call(paramsSource, param.id) ? paramsSource[param.id] : param.default,
               disabled: Boolean(readOnly),
               modelOptions,
+              defModels: def && Array.isArray(def.models) ? def.models : null,
+              modelsVersion: modelsVersion,
+              onDownloadRequest: (decl) => {
+                if (typeof onModelDownload === 'function') onModelDownload(node.id, param.id, decl)
+              },
               onChange: (paramId, value) => props.onParamChange(node.id, paramId, value),
             }),
           )
@@ -1409,6 +1601,16 @@
           'span',
           { className: 'vcg-cv-lib-main' },
           h('span', { className: 'vcg-cv-lib-name' }, def.nameZh || def.name || def.id),
+          typeof V.isUnreviewed === 'function' && V.isUnreviewed(def)
+            ? h(
+                'span',
+                {
+                  className: 'vcg-cv-lib-unreviewed',
+                  title: def.repoBranch ? t('cvUnreviewedFrom', { branch: def.repoBranch }) : t('cvDevModeHint'),
+                },
+                t('cvUnreviewed'),
+              )
+            : null,
           h('span', { className: 'vcg-cv-lib-sub' }, (def.name && def.nameZh ? def.name + ' · ' : '') + engineLabel(def.engine)),
         ),
         h('span', { className: 'vcg-cv-lib-plus' }, h(Glyph, { name: 'plus', size: 12 })),
@@ -1932,6 +2134,9 @@
     // Idle drag → "add node & connect" menu (CONTRACT §13.5):
     // { from: portRef, world: {x,y}, screen: {x,y} } | null
     const [picker, setPicker] = React.useState(null)
+    // §16.5 本地模型：下载完成后让模型参数下拉刷新（画布根层渲染弹窗，避免被 world 缩放裁切）。
+    const [modelsVersion, setModelsVersion] = React.useState(0)
+    const [modelDownload, setModelDownload] = React.useState(null)
 
     /* --------------------------------------------------------- view math */
     function applyView(nextView) {
@@ -3526,6 +3731,9 @@
         connect: connectState,
         hoverPort: hoverPort,
         modelOptions: modelOptions,
+        modelsVersion: modelsVersion,
+        onModelDownload: (nodeId, paramId, declaration) =>
+          setModelDownload({ nodeId: nodeId, paramId: paramId, declaration: declaration }),
         onNodePointerDown: (event, item) => startNodeDrag(event, item),
         onPortPointerDown: (event, item, dir, port, index) => startConnect(event, item, dir, port, index),
         onCycleEngine: (item, itemDef) => cycleNodeEngine(item, itemDef),
@@ -3766,6 +3974,72 @@
         if (def && picked.indexOf(def) < 0) picked.push(def)
       }
       return picked.slice(0, 4)
+    }
+
+    /* §16.4 Token 统计条：位于工具栏下方、画布上方，运行中实时求和 results[].usage。 */
+    function renderTokenBar() {
+      if (!nodes.length) return null
+      let prompt = 0
+      let completion = 0
+      let total = 0
+      let anyUsage = false
+      let done = 0
+      let failed = 0
+      let runningNodes = 0
+      let ms = 0
+      for (const node of nodes) {
+        const entry = results && results[node.id]
+        if (!entry) continue
+        if (entry.status === 'done') done += 1
+        else if (entry.status === 'error') failed += 1
+        else if (entry.status === 'running') runningNodes += 1
+        const nodeMs = Number(entry.ms)
+        if (Number.isFinite(nodeMs) && nodeMs > 0) ms += nodeMs
+        const usage = entry.usage
+        if (!usage || typeof usage !== 'object') continue
+        const hasPrompt = usage.prompt_tokens !== undefined && usage.prompt_tokens !== null
+        const hasCompletion = usage.completion_tokens !== undefined && usage.completion_tokens !== null
+        const hasTotal = usage.total_tokens !== undefined && usage.total_tokens !== null
+        const promptValue = hasPrompt ? Number(usage.prompt_tokens) : 0
+        const completionValue = hasCompletion ? Number(usage.completion_tokens) : 0
+        const totalValue = hasTotal ? Number(usage.total_tokens) : (hasPrompt ? promptValue : 0) + (hasCompletion ? completionValue : 0)
+        if (!hasPrompt && !hasCompletion && !hasTotal) continue
+        anyUsage = true
+        prompt += Number.isFinite(promptValue) ? promptValue : 0
+        completion += Number.isFinite(completionValue) ? completionValue : 0
+        total += Number.isFinite(totalValue) ? totalValue : 0
+      }
+      if (!anyUsage && !running && done === 0 && failed === 0 && runningNodes === 0) return null
+      const format = (value) => (typeof V.formatCount === 'function' ? V.formatCount(value) : String(Math.round(value)))
+      const elapsed = ms >= 1000 ? (ms / 1000).toFixed(1) + 's' : Math.round(ms) + 'ms'
+      return h(
+        'div',
+        { className: 'vcg-cv-tokens', role: 'status', title: t('cvTokensTitle') },
+        h(
+          'div',
+          { className: 'vcg-cv-tokens-main' },
+          h('span', { className: 'vcg-cv-tokens-label' }, t('cvTokens')),
+          anyUsage
+            ? h(
+                V.Fragment,
+                null,
+                h('span', { className: 'vcg-cv-token vcg-cv-token-in' }, t('cvTokensInput', { n: format(prompt) })),
+                h('span', { className: 'vcg-cv-token-sep' }, '·'),
+                h('span', { className: 'vcg-cv-token vcg-cv-token-out' }, t('cvTokensOutput', { n: format(completion) })),
+                h('span', { className: 'vcg-cv-token-sep' }, '·'),
+                h('span', { className: 'vcg-cv-token vcg-cv-token-total' }, t('cvTokensTotal', { n: format(total) })),
+              )
+            : h('span', { className: 'vcg-cv-tokens-empty' }, t('cvTokensEmpty')),
+        ),
+        h(
+          'div',
+          { className: 'vcg-cv-tokens-side' },
+          runningNodes > 0 ? h('span', { className: 'vcg-cv-tokens-chip vcg-cv-tokens-running' }, t('cvTokensRunning', { n: runningNodes })) : null,
+          h('span', { className: 'vcg-cv-tokens-chip' }, t('cvTokensNodes', { done: done + failed, total: nodes.length })),
+          failed > 0 ? h('span', { className: 'vcg-cv-tokens-chip vcg-cv-tokens-failed' }, t('cvTokensFailed', { n: failed })) : null,
+          ms > 0 ? h('span', { className: 'vcg-cv-tokens-chip' }, t('cvTokensMs', { s: elapsed })) : null,
+        ),
+      )
     }
 
     function renderEmptyGuide() {
@@ -4258,9 +4532,27 @@
               onDragStart: onLibraryDragStart,
             })
           : null,
-        h('div', { className: 'vcg-cv-main' }, renderToolbar(), h('div', { className: 'vcg-cv-stage-wrap' }, stage)),
+        h('div', { className: 'vcg-cv-main' }, renderToolbar(), renderTokenBar(), h('div', { className: 'vcg-cv-stage-wrap' }, stage)),
         renderPreview(),
       ),
+      V.ModelDownloadModal
+        ? h(V.ModelDownloadModal, {
+            open: Boolean(modelDownload),
+            declaration: modelDownload ? modelDownload.declaration : null,
+            onClose: () => setModelDownload(null),
+            onDone: (info) => {
+              const target = modelDownload
+              setModelsVersion((value) => value + 1)
+              setModelDownload(null)
+              if (!target) return
+              const node = nodesById[target.nodeId]
+              const params = node && node.params && typeof node.params === 'object' ? node.params : {}
+              const current = params[target.paramId]
+              const empty = current === undefined || current === null || current === ''
+              if (empty && info && info.filename) changeParam(target.nodeId, target.paramId, info.filename)
+            },
+          })
+        : null,
     )
   }
 

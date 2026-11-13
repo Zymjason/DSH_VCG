@@ -51,9 +51,27 @@ import {
   validateWorkflowShape,
   validateWorkflowWithDefs,
 } from '../index.js'
-import { Engine, firstImageValue, validateForRun } from '../lib/engine.js'
+import { Engine, addUsage, emptyUsage, firstImageValue, normalizeUsage, validateForRun } from '../lib/engine.js'
 import { isPlainObject } from '../lib/util.js'
-import { defaultState } from '../lib/state.js'
+import {
+  REPO_BRANCHES,
+  defaultState,
+  normalizeRepoBranch,
+} from '../lib/state.js'
+import {
+  EXECUTOR_KINDS,
+  LOCAL_EXECUTOR_FNS,
+  resolveRepoBranchBase,
+} from '../lib/nodes.js'
+import {
+  MODEL_FORMATS,
+  isTrustedUrl,
+  normalizeToolComponent,
+  normalizeTrustedSources,
+  pipCommandsFor,
+  TORCH_CPU_INDEX,
+} from '../lib/localtools.js'
+import { normalizeModelDeclarations } from '../lib/workflow.js'
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const NODES_DIR = join(ROOT, 'nodes')
@@ -160,7 +178,7 @@ ok(
   '节点 id 唯一且与文件名语义一致',
   `defs=${defs.size} files=${nodeFiles.length}`,
 )
-ok(BUILTIN_FNS.length === 13, '§4 内置执行器 fn 数量为 13', String(BUILTIN_FNS.length))
+ok(BUILTIN_FNS.length === 14, '§4 内置执行器 fn 数量为 14', String(BUILTIN_FNS.length))
 ok(NODE_CATEGORIES.length === 8, '§11.7 category 共 8 个', NODE_CATEGORIES.join(','))
 ok(PORT_TYPES.includes('conditioning') && PORT_TYPES.includes('any'), '端口类型表含 conditioning/any')
 
@@ -1029,6 +1047,90 @@ ok(typesCompatible('image', 'latent') === false, '§11.2 image→latent 禁止')
     else process.env.DSH_PROFILE_DIR = previousProfile
     await rm(smokeRoot, { recursive: true, force: true })
   }
+}
+
+/* ------------------------------------------------- §16 audit / local / usage */
+
+{
+  equal(EXECUTOR_KINDS, ['builtin', 'http', 'comfy', 'local'], '§16.6 executor.kind 含 local')
+  equal(LOCAL_EXECUTOR_FNS, ['safetensorsInspect'], '§16.6 本地执行 fn 白名单')
+  equal(REPO_BRANCHES, ['main', 'dev', 'bug', 'recheck'], '§16.1 仓库分支集合')
+  const fresh = defaultState()
+  equal(fresh.devMode, false, '§16.4 devMode 默认关闭')
+  equal(fresh.nodeRepo.branch, 'main', '§16.4 nodeRepo.branch 默认 main')
+  equal(fresh.local.autoInstall, false, '§16.5 本地工具默认不自动安装')
+  ok(typeof fresh.local.modelsDir === 'string' && fresh.local.modelsDir.endsWith('models'), '§16.5 本地模型目录默认 models')
+  equal(normalizeRepoBranch('dev'), 'dev', '§16.4 分支名 dev 合法')
+  equal(normalizeRepoBranch('nope'), 'main', '§16.4 非法分支回退 main')
+  ok(resolveRepoBranchBase('https://raw.githubusercontent.com/O/R/main', 'dev').endsWith('/dev'), '§16.4 GitHub 分支推导')
+  ok(
+    resolveRepoBranchBase('https://gitea.com/O/R/raw/branch/main', 'recheck').endsWith('/raw/branch/recheck'),
+    '§16.4 Gitea 分支推导',
+  )
+  ok(resolveRepoBranchBase('https://example.com/repo/main', 'bug').endsWith('/bug'), '§16.4 自定义 raw 地址末段替换')
+  let unknownBranchThrew = false
+  try {
+    resolveRepoBranchBase('https://raw.githubusercontent.com/O/R/custom-main', 'bug')
+  } catch {
+    unknownBranchThrew = true
+  }
+  ok(unknownBranchThrew, '§16.4 无法推导分支时给出可读错误')
+
+  const models = normalizeModelDeclarations([
+    {
+      name: 'W',
+      filename: 'w.safetensors',
+      url: 'https://huggingface.co/a/w.safetensors',
+      sha256: 'ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789',
+      size: 1024.4,
+      format: 'safetensors',
+    },
+    { filename: '../evil', url: 'https://x/y' },
+    { filename: 'insecure.ckpt', url: 'http://example.com/insecure.ckpt', format: 'ckpt' },
+    { filename: 'mystery.bin', url: 'https://example.com/mystery.bin', format: 'exe' },
+    'nope',
+  ])
+  equal(models.length, 3, '§16.3 模型声明过滤非法条目')
+  equal(models[0].size, 1024, '§16.3 模型 size 取整')
+  equal(models[0].sha256, 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789', '§16.3 sha256 小写化')
+  equal(models[1].insecure, true, '§16.3 http 源标记不安全')
+  equal(models[2].format, 'safetensors', '§16.3 非法 format 回退 safetensors')
+  equal(MODEL_FORMATS.includes('gguf'), true, '§16.3 模型格式含 gguf')
+
+  equal(emptyUsage(), { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, '§16.7 空 usage')
+  equal(normalizeUsage({ prompt_tokens: 10, completion_tokens: 5 }), { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }, '§16.7 usage total 回退')
+  equal(normalizeUsage({ prompt_tokens: 0, completion_tokens: 0 }), undefined, '§16.7 空 usage 返回 undefined')
+  const usageTotal = emptyUsage()
+  addUsage(usageTotal, { prompt_tokens: 3, completion_tokens: 2 })
+  addUsage(usageTotal, { total_tokens: 9 })
+  equal(usageTotal, { prompt_tokens: 3, completion_tokens: 2, total_tokens: 14 }, '§16.7 usage 汇总')
+
+  const registry = normalizeTrustedSources({
+    version: 1,
+    hosts: [
+      { host: 'HuggingFace.co', name: 'HF' },
+      { host: 'huggingface.co' },
+      { host: 'bad/host' },
+      { host: 'evil.com', trusted: false },
+    ],
+  })
+  equal(registry.hosts.length, 2, '§16.5 可信源去重/过滤非法 host')
+  equal(isTrustedUrl('https://cdn.huggingface.co/a.safetensors', registry).trusted, true, '§16.5 子域命中可信源')
+  equal(isTrustedUrl('http://huggingface.co/a.safetensors', registry).trusted, false, '§16.5 非 https 不可信')
+  equal(isTrustedUrl('https://evil.com/a.safetensors', registry).trusted, false, '§16.5 非可信源拒绝')
+  equal(normalizeToolComponent('all'), 'all', '§16.5 安装组件 all')
+  const torchCmds = pipCommandsFor('torch')
+  equal(torchCmds.length, 1, '§16.5 torch 单命令')
+  equal(torchCmds[0].includes(TORCH_CPU_INDEX), true, '§16.5 torch 使用 CPU wheel 源')
+
+  // The new local node/ workflow shipped in the repo must stay loadable.
+  ok(defs.has('local-safetensors-inspect'), '§16.6 本地检查节点已加载')
+  const localDef = defs.get('local-safetensors-inspect')
+  ok(localDef && localDef.executor.kind === 'local' && localDef.executor.fn === 'safetensorsInspect', '§16.6 本地检查节点 executor 合法')
+  ok(Array.isArray(localDef?.models) && localDef.models.length === 1, '§16.3 节点 models 声明保留')
+  const localWf = workflows.get('wf-local-inspect')
+  ok(Boolean(localWf) && Array.isArray(localWf.models) && localWf.models.length === 1, '§16.3 工作流 models 声明保留')
+  ok(Boolean(localWf && localWf.nodes.some((node) => node.type === 'local-safetensors-inspect')), '§16.6 本地检查工作流引用新节点')
 }
 
 /* ----------------------------------------------------------------- summary */

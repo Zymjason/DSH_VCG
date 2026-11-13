@@ -86,6 +86,101 @@ window.__ModuleLoader__.load({
       copyPath: '复制路径',
       openDir: '打开目录',
       noProvider: '尚未检测到可用的生图 API，请到「设置 → VCG 视觉控制生成器」配置。',
+      /* §16 仓库分支 / 开发者模式 / 本地工具与模型 */
+      cvDevMode: '开发者模式',
+      cvDevModeHint: '允许查看并导入未审核分支（dev / bug / recheck）的节点与工作流；与专业模式相互独立。',
+      cvDevModeUnsupported: '当前宿主版本不支持开发者模式，请更新插件后再试。',
+      cvDevModeDangerTitle: '开启开发者模式？',
+      cvDevModeDangerLead: '开发者模式会允许使用未经人工审核的仓库内容。',
+      cvDevModeRisk1: '未审核节点可能包含执行任意代码或访问网络的逻辑',
+      cvDevModeRisk2: '工作流可能声明不可信的模型下载地址，下载的权重可能被篡改',
+      cvDevModeRisk3: '审计与人工审查尚未通过，内容随时可能变化',
+      cvDevModeDangerTail: '仅在你信任仓库来源（GitHub / Gitea）时开启；关闭后立即回到 main 分支。',
+      cvDevModeConfirm: '我已了解风险，开启',
+      cvDevModeOn: '开发者模式已开启',
+      cvDevModeOff: '开发者模式已关闭，已回到 main 分支',
+      cvDevModeBadge: '开发者模式',
+      cvDevModeEnabled: '已开启',
+      cvDevModeOnlyMain: '开发者模式关闭时只能使用 main 分支',
+      cvBranch: '仓库分支',
+      cvBranchShort: '分支',
+      cvBranchMain: 'main（已审核）',
+      cvBranchHint: '切换分支会重新拉取节点仓库；非 main 分支的内容未经审核。',
+      cvBranchChanged: '已切换到分支 {branch}',
+      cvBranchFailed: '切换分支失败',
+      cvBranchLocked: '开启开发者模式后才能切换到未审核分支',
+      cvBranchUnavailable: '不可用',
+      cvBranchUnreviewed: '未审核内容，可能不安全',
+      cvBranchUnreviewedDesc: '当前节点仓库分支为 {branch}：其中节点与工作流尚未通过人工审核，请仅在你信任来源时使用。',
+      cvBranchCurrent: '当前分支',
+      cvUnreviewed: '未审核',
+      cvUnreviewedFrom: '来源分支 {branch}（未审核）',
+      cvUnreviewedNodeHint: '该节点来自未审核分支，开启开发者模式后才能导入。',
+      cvLocalTools: '本地工具与模型',
+      cvLocalToolsDesc: '本地 PyTorch / safetensors 与权重模型（专业模式）。插件安装时不会自动下载大文件。',
+      cvLocalToolsProOnly: '开启专业模式后可查看本地工具与模型。',
+      cvLocalProSaveFirst: '请先保存设置以启用专业模式，保存后即可检测/安装本地工具与模型。',
+      cvLocalDetect: '检测环境',
+      cvLocalDetecting: '检测中…',
+      cvLocalInstallTorch: '安装 PyTorch',
+      cvLocalInstallSafetensors: '安装 safetensors',
+      cvLocalInstallAll: '一键安装',
+      cvLocalInstallSizes: 'CPU 版 PyTorch 约 200 MB、safetensors 约 10 MB，安装通常需要 3–10 分钟。',
+      cvLocalPython: 'Python',
+      cvLocalPip: 'pip',
+      cvLocalTorch: 'PyTorch',
+      cvLocalSafetensors: 'safetensors',
+      cvLocalCuda: 'CUDA',
+      cvLocalDisk: '磁盘剩余',
+      cvLocalModelsDir: '模型目录',
+      cvLocalInstalled: '已安装',
+      cvLocalMissing: '未安装',
+      cvLocalInstalling: '安装中',
+      cvLocalInstallingActive: '正在安装 {component}，完成后会自动刷新。',
+      cvLocalProgress: '安装进度',
+      cvLocalLog: '安装日志',
+      cvLocalNotDetected: '尚未检测，请点击「检测环境」。',
+      cvLocalDetectFailed: '检测失败',
+      cvLocalInstallFailed: '安装失败',
+      cvLocalInstallStarted: '已开始安装 {component}。',
+      cvLocalStatusUnknown: '未知',
+      cvModels: '模型下载',
+      cvModelsDesc: '下载到本地模型目录的权重文件；未下载的模型可在节点参数中直接下载。',
+      cvModelsRefresh: '刷新列表',
+      cvModelsEmpty: '暂无已下载模型。',
+      cvModelsName: '名称',
+      cvModelsSize: '大小',
+      cvModelsFormat: '格式',
+      cvModelsUpdated: '更新时间',
+      cvModelsDownload: '下载模型',
+      cvModelsUrl: '模型 URL',
+      cvModelsUrlPh: 'https://huggingface.co/.../model.safetensors',
+      cvModelsFilename: '文件名',
+      cvModelsFilenamePh: 'model.safetensors',
+      cvModelsSha: 'sha256（可选）',
+      cvModelsSizeBytes: '大小（字节，可选）',
+      cvModelsFormatField: '格式',
+      cvModelsTrustTitle: '来源检查',
+      cvModelsTrusted: '可信来源',
+      cvModelsUntrusted: '不可信来源',
+      cvModelsUntrustedWarn: '下载地址 {host} 不在可信模型源清单中：文件可能被篡改或包含恶意内容。',
+      cvModelsRisks: '继续下载前请确认来源可信，并在下载后核对 sha256。',
+      cvModelsContinue: '我已确认风险，继续下载',
+      cvModelsDownloading: '下载中…',
+      cvModelsDownloadOk: '模型下载完成',
+      cvModelsDownloadFailed: '模型下载失败',
+      cvModelsNeedUrl: '请填写有效的 https 模型 URL。',
+      cvModelsNeedFilename: '请填写文件名。',
+      cvModelsDeclared: '节点声明模型',
+      cvModelsDownloaded: '已下载',
+      cvModelsNotDownloaded: '未下载模型',
+      cvModelsPick: '选择已下载模型',
+      cvModelsSettingsHint: '没有可用模型？到「设置 → 本地工具与模型」下载。',
+      cvModelsHost: '来源主机',
+      cvModelsLicense: '许可',
+      cvModelsTrustCheck: '检查来源',
+      cvModelsNoDeclared: '该节点未声明模型。',
+      cvModelsDialogTitle: '下载模型',
     },
     en: {
       appName: 'VCG Visual Control Generator',
@@ -146,6 +241,101 @@ window.__ModuleLoader__.load({
       copyPath: 'Copy path',
       openDir: 'Open folder',
       noProvider: 'No image API detected yet. Configure one in Settings → VCG Visual Control Generator.',
+      /* §16 repo branch / developer mode / local tools & models */
+      cvDevMode: 'Developer mode',
+      cvDevModeHint: 'Allows browsing and importing nodes/workflows from unreviewed branches (dev / bug / recheck). Independent from pro mode.',
+      cvDevModeUnsupported: 'This host version does not support developer mode; update the plugin and retry.',
+      cvDevModeDangerTitle: 'Enable developer mode?',
+      cvDevModeDangerLead: 'Developer mode allows content that has not passed human review.',
+      cvDevModeRisk1: 'Unreviewed nodes may contain logic that runs arbitrary code or accesses the network',
+      cvDevModeRisk2: 'Workflows may declare untrusted model download URLs whose weights could be tampered with',
+      cvDevModeRisk3: 'Audit and human review have not passed; content can change at any time',
+      cvDevModeDangerTail: 'Only enable this if you trust the repository source (GitHub / Gitea). Disabling returns to the main branch immediately.',
+      cvDevModeConfirm: 'I understand the risks, enable',
+      cvDevModeOn: 'Developer mode enabled',
+      cvDevModeOff: 'Developer mode disabled, back on the main branch',
+      cvDevModeBadge: 'Developer mode',
+      cvDevModeEnabled: 'On',
+      cvDevModeOnlyMain: 'Only the main branch is available while developer mode is off',
+      cvBranch: 'Repository branch',
+      cvBranchShort: 'Branch',
+      cvBranchMain: 'main (reviewed)',
+      cvBranchHint: 'Switching branches re-fetches the node repository; non-main branches are not reviewed.',
+      cvBranchChanged: 'Switched to branch {branch}',
+      cvBranchFailed: 'Branch switch failed',
+      cvBranchLocked: 'Enable developer mode before switching to an unreviewed branch',
+      cvBranchUnavailable: 'unavailable',
+      cvBranchUnreviewed: 'Unreviewed content, may be unsafe',
+      cvBranchUnreviewedDesc: 'The node repository is on branch {branch}: its nodes and workflows have not passed human review. Only use them if you trust the source.',
+      cvBranchCurrent: 'Current branch',
+      cvUnreviewed: 'Unreviewed',
+      cvUnreviewedFrom: 'Source branch {branch} (unreviewed)',
+      cvUnreviewedNodeHint: 'This node comes from an unreviewed branch; enable developer mode to import it.',
+      cvLocalTools: 'Local tools & models',
+      cvLocalToolsDesc: 'Local PyTorch / safetensors and weight models (pro mode). The plugin never downloads large files during install.',
+      cvLocalToolsProOnly: 'Enable pro mode to view local tools and models.',
+      cvLocalProSaveFirst: 'Save settings to enable pro mode first; local tools and models become available right after.',
+      cvLocalDetect: 'Detect environment',
+      cvLocalDetecting: 'Detecting…',
+      cvLocalInstallTorch: 'Install PyTorch',
+      cvLocalInstallSafetensors: 'Install safetensors',
+      cvLocalInstallAll: 'Install both',
+      cvLocalInstallSizes: 'CPU PyTorch is ~200 MB and safetensors ~10 MB; installation usually takes 3–10 minutes.',
+      cvLocalPython: 'Python',
+      cvLocalPip: 'pip',
+      cvLocalTorch: 'PyTorch',
+      cvLocalSafetensors: 'safetensors',
+      cvLocalCuda: 'CUDA',
+      cvLocalDisk: 'Disk free',
+      cvLocalModelsDir: 'Models folder',
+      cvLocalInstalled: 'Installed',
+      cvLocalMissing: 'Not installed',
+      cvLocalInstalling: 'Installing',
+      cvLocalInstallingActive: 'Installing {component}; the status refreshes automatically.',
+      cvLocalProgress: 'Install progress',
+      cvLocalLog: 'Install log',
+      cvLocalNotDetected: 'Not detected yet — click "Detect environment".',
+      cvLocalDetectFailed: 'Detection failed',
+      cvLocalInstallFailed: 'Installation failed',
+      cvLocalInstallStarted: 'Started installing {component}.',
+      cvLocalStatusUnknown: 'Unknown',
+      cvModels: 'Model downloads',
+      cvModelsDesc: 'Weights downloaded into the local models folder; declared models can also be downloaded from node parameters.',
+      cvModelsRefresh: 'Refresh list',
+      cvModelsEmpty: 'No models downloaded yet.',
+      cvModelsName: 'Name',
+      cvModelsSize: 'Size',
+      cvModelsFormat: 'Format',
+      cvModelsUpdated: 'Updated',
+      cvModelsDownload: 'Download model',
+      cvModelsUrl: 'Model URL',
+      cvModelsUrlPh: 'https://huggingface.co/.../model.safetensors',
+      cvModelsFilename: 'File name',
+      cvModelsFilenamePh: 'model.safetensors',
+      cvModelsSha: 'sha256 (optional)',
+      cvModelsSizeBytes: 'Size in bytes (optional)',
+      cvModelsFormatField: 'Format',
+      cvModelsTrustTitle: 'Source check',
+      cvModelsTrusted: 'Trusted source',
+      cvModelsUntrusted: 'Untrusted source',
+      cvModelsUntrustedWarn: '{host} is not in the trusted model source list: the file may be tampered with or malicious.',
+      cvModelsRisks: 'Only continue if you trust the source, and verify sha256 after downloading.',
+      cvModelsContinue: 'I understand the risk, download anyway',
+      cvModelsDownloading: 'Downloading…',
+      cvModelsDownloadOk: 'Model downloaded',
+      cvModelsDownloadFailed: 'Model download failed',
+      cvModelsNeedUrl: 'Enter a valid https model URL.',
+      cvModelsNeedFilename: 'Enter a file name.',
+      cvModelsDeclared: 'Declared models',
+      cvModelsDownloaded: 'Downloaded',
+      cvModelsNotDownloaded: 'No model downloaded',
+      cvModelsPick: 'Pick a downloaded model',
+      cvModelsSettingsHint: 'No models available? Download them in Settings → Local tools & models.',
+      cvModelsHost: 'Source host',
+      cvModelsLicense: 'License',
+      cvModelsTrustCheck: 'Check source',
+      cvModelsNoDeclared: 'This node declares no models.',
+      cvModelsDialogTitle: 'Download model',
     },
   }
 
@@ -338,6 +528,31 @@ window.__ModuleLoader__.load({
     const pad = (n) => String(n).padStart(2, '0')
     return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes())
   }
+  /** Thousands-separated integer for token counters (§16.4). */
+  V.formatCount = function formatCount(value) {
+    const n = Number(value)
+    if (!Number.isFinite(n)) return '0'
+    const rounded = Math.round(n)
+    try {
+      return rounded.toLocaleString('zh-CN')
+    } catch {
+      return String(rounded)
+    }
+  }
+  /** File name of a POSIX/Windows path. */
+  V.basename = function basename(path) {
+    const text = String(path || '')
+    const parts = text.split(/[\\/]/)
+    return parts[parts.length - 1] || text
+  }
+  /** Host of a URL (empty when unparsable). */
+  V.hostOf = function hostOf(url) {
+    try {
+      return new URL(String(url || '')).host || ''
+    } catch {
+      return ''
+    }
+  }
   V.debounce = function debounce(fn, delay) {
     let timer = null
     return function debounced() {
@@ -450,6 +665,26 @@ window.__ModuleLoader__.load({
     ENGINE_LABELS: { cloud: '云端', local: '本地', both: '云端/本地' },
     ENGINE_COLORS: { cloud: '#7c5cff', local: '#f59e0b', both: '#22c55e' },
     STATUS_COLORS: { idle: '#94a3b8', running: '#38bdf8', done: '#34d399', error: '#f87171' },
+    /* §16.2 节点仓库分支：main 已审核，其余为未审核分支 */
+    REPO_BRANCHES: ['main', 'dev', 'bug', 'recheck'],
+    /* §16.5 本地模型文件格式 */
+    MODEL_FORMATS: ['safetensors', 'ckpt', 'pt', 'pth', 'bin', 'gguf'],
+  }
+  /** True when a node/workflow comes from an unreviewed repository branch (§16.2). */
+  V.isUnreviewed = function isUnreviewed(item) {
+    if (!item || typeof item !== 'object') return false
+    const branch = item.repoBranch || item.branch
+    if (typeof branch === 'string' && branch.trim() !== '' && branch.trim() !== 'main') return true
+    return item.reviewState === 'unreviewed'
+  }
+  /** Read `devMode` / `nodeRepo.branch` defensively (host may lag a version). */
+  V.readDevMode = function readDevMode(state) {
+    return Boolean(state && state.devMode)
+  }
+  V.readRepoBranch = function readRepoBranch(state) {
+    const nodeRepo = state && state.nodeRepo && typeof state.nodeRepo === 'object' ? state.nodeRepo : {}
+    const branch = typeof nodeRepo.branch === 'string' ? nodeRepo.branch.trim() : ''
+    return branch || 'main'
   }
   V.portColor = (type) => PORT_COLORS[type] || PORT_COLORS.any
   V.categoryLabel = (id) => {
@@ -533,7 +768,14 @@ window.__ModuleLoader__.load({
 .vcg-debug-group-title{font-size:12px;font-weight:600;color:var(--dsw-alias-label-secondary)}
 .vcg-debug-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .vcg-debug-item{display:flex;align-items:flex-start;gap:7px;padding:5px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:var(--dsw-alias-bg-layer-1);font-size:12px;line-height:1.45}
+.vcg-model-modal{display:flex;flex-direction:column;gap:10px;min-width:0}
+.vcg-model-kv{display:grid;grid-template-columns:104px minmax(0,1fr);gap:5px 10px;font-size:12px;align-items:start}
+.vcg-model-kv-label{color:var(--dsw-alias-label-secondary)}
+.vcg-model-kv-value{min-width:0;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+.vcg-model-trust{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vcg-model-risk{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--dsw-alias-label-primary)}
 `
+
 
   function StyleTag() {
     return h('style', { 'data-vcg': 'core', dangerouslySetInnerHTML: { __html: CSS } })
@@ -954,6 +1196,176 @@ window.__ModuleLoader__.load({
     )
   }
 
+  /* ------------------------------------------- §16.5 model download modal */
+
+  /**
+   * 不可信模型源二次确认 + 下载弹窗（§16.5）。
+   * props: { open, declaration, onClose, onDone }
+   * declaration: { url, filename, sha256, size, format, name, license }
+   */
+  function ModelDownloadModal(props) {
+    const { open, declaration } = props
+    const [trust, setTrust] = React.useState(null)
+    const [checking, setChecking] = React.useState(false)
+    const [busy, setBusy] = React.useState(false)
+    const [error, setError] = React.useState('')
+    const [done, setDone] = React.useState(false)
+    /* §16.5 下载进度：宿主没有独立进度 RPC，复用 toolsStatus.download。 */
+    const [progress, setProgress] = React.useState(null)
+    const url = declaration ? String(declaration.url || '') : ''
+    const decl = declaration || {}
+    const filename = String(decl.filename || basenameOf(decl.url) || '')
+    const host = (trust && trust.host) || hostOfUrl(url)
+
+    React.useEffect(() => {
+      if (!open || !url) return undefined
+      let alive = true
+      setTrust(null)
+      setChecking(true)
+      setError('')
+      setDone(false)
+      setBusy(false)
+      V.rpc('modelsTrust', { url: url })
+        .then((value) => {
+          if (!alive) return
+          setTrust(value && typeof value === 'object' ? value : {})
+          setChecking(false)
+        })
+        .catch(() => {
+          if (!alive) return
+          // 宿主暂不支持时按「不可信」处理，仍允许确认后下载。
+          setTrust({ trusted: false, host: hostOfUrl(url), unavailable: true })
+          setChecking(false)
+        })
+      return () => {
+        alive = false
+      }
+    }, [open, url])
+
+    React.useEffect(() => {
+      if (!busy) return undefined
+      let alive = true
+      const tick = () => {
+        V.rpc('toolsStatus')
+          .then((value) => {
+            if (!alive) return
+            const download = value && value.download && typeof value.download === 'object' ? value.download : null
+            setProgress(download)
+          })
+          .catch(() => {})
+      }
+      tick()
+      const timer = setInterval(tick, 1500)
+      return () => {
+        alive = false
+        clearInterval(timer)
+      }
+    }, [busy])
+
+    if (!open) return null
+
+    const trusted = Boolean(trust && trust.trusted === true)
+
+    async function download() {
+      if (busy) return
+      setBusy(true)
+      setError('')
+      try {
+        const args = { url: url, confirmUntrusted: !trusted }
+        if (filename) args.filename = filename
+        if (decl.sha256) args.sha256 = decl.sha256
+        if (decl.size !== undefined && decl.size !== null && decl.size !== '') args.size = decl.size
+        if (decl.format) args.format = decl.format
+        await V.rpc('modelsDownload', args)
+        setDone(true)
+        if (typeof props.onDone === 'function') props.onDone(Object.assign({ filename: filename }, decl))
+      } catch (err) {
+        setError(vcgMessage(err))
+      } finally {
+        setBusy(false)
+      }
+    }
+
+    const kv = [
+      decl.name ? h('div', { key: 'name', className: 'vcg-model-kv-label' }, t('cvModelsName')) : null,
+      decl.name ? h('div', { key: 'name-v', className: 'vcg-model-kv-value' }, String(decl.name)) : null,
+      h('div', { key: 'host', className: 'vcg-model-kv-label' }, t('cvModelsHost')),
+      h('div', { key: 'host-v', className: 'vcg-model-kv-value' }, host || '—'),
+      h('div', { key: 'file', className: 'vcg-model-kv-label' }, t('cvModelsFilename')),
+      h('div', { key: 'file-v', className: 'vcg-model-kv-value' }, filename || '—'),
+      decl.size !== undefined && decl.size !== null && decl.size !== ''
+        ? h('div', { key: 'size', className: 'vcg-model-kv-label' }, t('cvModelsSize'))
+        : null,
+      decl.size !== undefined && decl.size !== null && decl.size !== ''
+        ? h('div', { key: 'size-v', className: 'vcg-model-kv-value' }, V.formatBytes(decl.size))
+        : null,
+      decl.format ? h('div', { key: 'format', className: 'vcg-model-kv-label' }, t('cvModelsFormat')) : null,
+      decl.format ? h('div', { key: 'format-v', className: 'vcg-model-kv-value' }, String(decl.format)) : null,
+      decl.sha256 ? h('div', { key: 'sha', className: 'vcg-model-kv-label' }, 'sha256') : null,
+      decl.sha256 ? h('div', { key: 'sha-v', className: 'vcg-model-kv-value' }, String(decl.sha256)) : null,
+      decl.license ? h('div', { key: 'lic', className: 'vcg-model-kv-label' }, t('cvModelsLicense')) : null,
+      decl.license ? h('div', { key: 'lic-v', className: 'vcg-model-kv-value' }, String(decl.license)) : null,
+    ].filter(Boolean)
+
+    const body = h(
+      'div',
+      { className: 'vcg-model-modal' },
+      h('div', { className: 'vcg-model-kv' }, kv),
+      h(
+        'div',
+        { className: 'vcg-model-trust' },
+        checking
+          ? h('span', { className: 'vcg-row' }, h(Spinner, { size: 12 }), t('cvModelsTrustCheck') + '…')
+          : trusted
+            ? h(Badge, { color: 'var(--dsw-alias-state-success-primary)' }, t('cvModelsTrusted'))
+            : h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvModelsUntrusted')),
+      ),
+      !checking && !trusted
+        ? h(
+            Banner,
+            { kind: 'warn', title: t('cvModelsUntrustedWarn', { host: host || '—' }) },
+            h('ul', { className: 'vcg-model-risk' }, h('li', null, t('cvModelsRisks')), h('li', null, t('cvDevModeRisk2'))),
+          )
+        : null,
+      busy && progress
+        ? h(
+            'div',
+            { className: 'vcg-hint' },
+            t('cvModelsDownloading') +
+              ' · ' +
+              String(Number(progress.progress) || 0) +
+              '%' +
+              (Number(progress.total) > 0
+                ? ' · ' + V.formatBytes(Number(progress.received) || 0) + ' / ' + V.formatBytes(Number(progress.total))
+                : ''),
+          )
+        : null,
+      error ? h(Banner, { kind: 'error', title: t('cvModelsDownloadFailed') }, error) : null,
+      done ? h(Banner, { kind: 'success', title: t('cvModelsDownloadOk') }, filename) : null,
+    )
+
+    const footer = h(
+      'div',
+      { className: 'vcg-row', style: { marginLeft: 'auto' } },
+      h(Button, { onClick: props.onClose, disabled: busy }, done ? t('close') : t('cancel')),
+      done
+        ? null
+        : h(
+            Button,
+            { variant: 'primary', onClick: download, disabled: busy || checking || !url },
+            busy ? h('span', { className: 'vcg-row' }, h(Spinner, { size: 12 }), t('cvModelsDownloading')) : trusted ? t('cvModelsDownload') : t('cvModelsContinue'),
+          ),
+    )
+
+    return h(
+      Modal,
+      { open: true, title: t('cvModelsDialogTitle'), onClose: busy ? undefined : props.onClose, width: 'min(620px,100%)', footer: footer },
+      body,
+    )
+  }
+  const basenameOf = (value) => V.basename(value)
+  const hostOfUrl = (value) => V.hostOf(value)
+
   /* ------------------------------------------------------- async data hook */
 
   /**
@@ -998,6 +1410,7 @@ window.__ModuleLoader__.load({
 
   /* ------------------------------------------------------------- ui export */
 
+  V.ModelDownloadModal = ModelDownloadModal
   V.ui = {
     Button,
     IconButton,
@@ -1133,6 +1546,17 @@ window.__ModuleLoader__.load({
     cvMore: '更多',
     cvMoreEngine: '引擎模式',
     cvGraphStats: '图统计',
+    /* §16.4 Token 统计条 */
+    cvTokens: '本次运行 Token',
+    cvTokensInput: '输入 {n}',
+    cvTokensOutput: '输出 {n}',
+    cvTokensTotal: '合计 {n}',
+    cvTokensEmpty: '本次运行未返回用量',
+    cvTokensNodes: '节点 {done}/{total}',
+    cvTokensRunning: '运行中 {n}',
+    cvTokensFailed: '失败 {n}',
+    cvTokensMs: '耗时 {s}',
+    cvTokensTitle: '本次运行的 Token 用量（来自各节点结果的 usage）',
   }
   const enExtra = {
     cvNodeLibrary: 'Node library',
@@ -1215,6 +1639,17 @@ window.__ModuleLoader__.load({
     cvMore: 'More',
     cvMoreEngine: 'Engine mode',
     cvGraphStats: 'Graph',
+    /* §16.4 token bar */
+    cvTokens: 'Tokens this run',
+    cvTokensInput: 'input {n}',
+    cvTokensOutput: 'output {n}',
+    cvTokensTotal: 'total {n}',
+    cvTokensEmpty: 'This run returned no usage',
+    cvTokensNodes: 'nodes {done}/{total}',
+    cvTokensRunning: 'running {n}',
+    cvTokensFailed: 'failed {n}',
+    cvTokensMs: 'elapsed {s}',
+    cvTokensTitle: 'Token usage of this run (from each node result usage)',
   }
   if (typeof V.addDict === 'function') V.addDict(zhExtra, enExtra)
 
@@ -1698,6 +2133,19 @@ window.__ModuleLoader__.load({
 .vcg-cv-more-readonly{display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:11px;color:var(--dsw-alias-state-warn-primary)}
 
 /* ------------------------------------------------------------------ stage */
+.vcg-cv-tokens{display:flex;align-items:center;gap:10px;padding:3px 10px;min-height:26px;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font-size:11px;font-variant-numeric:tabular-nums;flex:none;overflow:hidden;user-select:none}
+.vcg-cv-tokens-main{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.vcg-cv-tokens-label{font-weight:700;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--dsw-alias-label-secondary);flex:none}
+.vcg-cv-token{color:var(--dsw-alias-label-primary);white-space:nowrap}
+.vcg-cv-token-in{color:var(--dsw-alias-state-business-primary)}
+.vcg-cv-token-out{color:var(--dsw-alias-state-success-primary)}
+.vcg-cv-token-total{font-weight:600}
+.vcg-cv-token-sep{opacity:.5}
+.vcg-cv-tokens-empty{color:var(--dsw-alias-label-secondary);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-cv-tokens-side{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none;overflow:hidden}
+.vcg-cv-tokens-chip{display:inline-flex;align-items:center;padding:0 6px;height:16px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);white-space:nowrap;font-size:10.5px}
+.vcg-cv-tokens-running{color:var(--dsw-alias-state-business-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-business-primary) 45%,transparent)}
+.vcg-cv-tokens-failed{color:var(--dsw-alias-state-error-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 45%,transparent)}
 .vcg-cv-stage-wrap{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--dsw-alias-bg-base)}
 .vcg-cv-stage{position:absolute;inset:0;overflow:hidden;outline:none;touch-action:none;cursor:default;user-select:none}
 .vcg-cv-stage.vcg-cv-panning{cursor:grabbing}
@@ -1727,6 +2175,8 @@ window.__ModuleLoader__.load({
 .vcg-cv-node-title{flex:1;min-width:0;font-size:12.5px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text}
 .vcg-cv-title-input{flex:1;min-width:0;height:22px;border:1px solid var(--dsw-alias-brand-primary);border-radius:5px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-family:inherit;font-size:12px;padding:0 5px;outline:none}
 .vcg-cv-ms{font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;flex:none;white-space:nowrap}
+.vcg-cv-unreviewed{display:inline-flex;align-items:center;padding:0 4px;height:14px;border-radius:4px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-warn-primary) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 16%,transparent);color:var(--dsw-alias-state-warn-primary);font-size:9px;line-height:14px;font-weight:700;white-space:nowrap;flex:none}
+.vcg-cv-lib-unreviewed{flex:none;padding:0 4px;height:13px;border-radius:4px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-warn-primary) 55%,transparent);color:var(--dsw-alias-state-warn-primary);font-size:9px;line-height:13px;font-weight:700}
 .vcg-cv-engine{display:inline-flex;align-items:center;gap:3px;border:1px solid;border-radius:999px;padding:0 6px;height:18px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;background:transparent;flex:none;line-height:1;white-space:nowrap;transition:filter 100ms ease}
 .vcg-cv-engine:hover:not(:disabled){filter:brightness(1.15)}
 .vcg-cv-engine:disabled{cursor:default;opacity:.9}
@@ -1778,6 +2228,16 @@ window.__ModuleLoader__.load({
 .vcg-cv-model-row .vcg-input,.vcg-cv-model-row .vcg-select{flex:1;min-width:0}
 .vcg-cv-model-act{width:22px;height:22px;border:1px solid var(--dsw-alias-border-l1);border-radius:6px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:none}
 .vcg-cv-model-act:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
+.vcg-cv-model-meta{font-size:9.5px;line-height:1.35;color:var(--dsw-alias-label-secondary);opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vcg-cv-model-decl{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--dsw-alias-border-l1);padding-top:4px;margin-top:1px}
+.vcg-cv-model-decl-title{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dsw-alias-label-secondary)}
+.vcg-cv-model-decl-row{display:flex;align-items:center;gap:4px;min-width:0;font-size:10.5px}
+.vcg-cv-model-decl-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-primary)}
+.vcg-cv-model-decl-size{color:var(--dsw-alias-label-secondary);flex:none;font-variant-numeric:tabular-nums}
+.vcg-cv-model-decl-ok{color:var(--dsw-alias-state-success-primary);flex:none;margin-left:auto;font-size:10px}
+.vcg-cv-model-dl{display:inline-flex;align-items:center;gap:3px;margin-left:auto;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-family:inherit;font-size:10px;line-height:16px;padding:0 5px;cursor:pointer;flex:none}
+.vcg-cv-model-dl:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
+.vcg-cv-model-dl:disabled{opacity:.5;cursor:default}
 
 /* ---------------------------------------------------------------- results */
 .vcg-cv-result{margin-top:2px;display:flex;flex-direction:column;gap:5px;border-top:1px dashed var(--dsw-alias-border-l1);padding-top:6px;user-select:text;min-width:0}
@@ -1933,7 +2393,7 @@ window.__ModuleLoader__.load({
   /* ------------------------------------------------------------ ParamField */
 
   function ParamField(props) {
-    const { param, value, disabled, modelOptions } = props
+    const { param, value, disabled, modelOptions, defModels, modelsVersion, onDownloadRequest } = props
     if (!param || !param.id) return null
     const type = param.type || 'text'
     const onChange = (next) => props.onChange(param.id, next)
@@ -2004,6 +2464,9 @@ window.__ModuleLoader__.load({
         value: value === undefined || value === null ? '' : value,
         options: Array.isArray(param.options) && param.options.length ? param.options : modelOptions || [],
         disabled: disabled,
+        defModels: defModels,
+        modelsVersion: modelsVersion,
+        onDownloadRequest: onDownloadRequest,
         onChange,
       })
     } else {
@@ -2024,14 +2487,105 @@ window.__ModuleLoader__.load({
     )
   }
 
-  /** Model select from settings providers + free text fallback. */
+  /** modelsList 返回项 → 下载下拉项（§16.5）。 */
+  function modelFileEntries(list) {
+    const out = []
+    for (const entry of Array.isArray(list) ? list : []) {
+      if (!entry) continue
+      const filename = String(
+        (typeof entry === 'string' ? entry : entry.filename || entry.file || V.basename(entry.path || '') || '') || '',
+      ).trim()
+      if (!filename) continue
+      if (out.some((item) => item.filename === filename)) continue
+      out.push({
+        filename: filename,
+        name: typeof entry === 'string' ? filename : String(entry.name || filename),
+        label: filename,
+        size: typeof entry === 'object' ? entry.size : undefined,
+        format: typeof entry === 'object' ? entry.format || '' : '',
+      })
+    }
+    return out
+  }
+
+  /** 节点声明里可用于下载的模型（§16.3/§16.5）。 */
+  function modelDeclarations(list) {
+    const out = []
+    for (const entry of Array.isArray(list) ? list : []) {
+      if (!entry || typeof entry !== 'object') continue
+      const url = typeof entry.url === 'string' ? entry.url.trim() : ''
+      if (!url) continue
+      const filename = String(entry.filename || V.basename(url) || '').trim()
+      if (!filename) continue
+      out.push({
+        url: url,
+        filename: filename,
+        name: String(entry.name || filename),
+        sha256: typeof entry.sha256 === 'string' ? entry.sha256 : '',
+        size: entry.size,
+        format: typeof entry.format === 'string' ? entry.format : '',
+        license: typeof entry.license === 'string' ? entry.license : '',
+        required: entry.required === true,
+      })
+    }
+    return out
+  }
+
+  /**
+   * 模型参数（§16.5）：下拉优先展示本地已下载权重（modelsList），
+   * 其次保留 provider 模型 id；节点声明 models[] 时提供下载入口
+   * （不可信来源的二次确认由 V.ModelDownloadModal 负责）。
+   */
   function ModelParam(props) {
-    const { value, options, disabled } = props
-    const list = Array.isArray(options) ? options.slice() : []
-    if (value && list.indexOf(value) < 0) list.unshift(value)
-    const [free, setFree] = React.useState(() => list.length === 0 || Boolean(value && list.indexOf(value) < 0))
-    const selectOptions = list.concat([{ value: '__vcg_custom__', label: t('cvModelCustom') }])
-    if (!list.length) selectOptions.unshift({ value: '', label: '—' })
+    const { value, options, disabled, defModels, modelsVersion, onDownloadRequest } = props
+    const [downloaded, setDownloaded] = React.useState(null)
+    const [loadError, setLoadError] = React.useState('')
+    const [free, setFree] = React.useState(false)
+    const version = modelsVersion || 0
+
+    React.useEffect(() => {
+      let alive = true
+      V.rpc('modelsList')
+        .then((result) => {
+          if (!alive) return
+          setDownloaded(modelFileEntries(result && result.models))
+          setLoadError('')
+        })
+        .catch((error) => {
+          if (!alive) return
+          setDownloaded([])
+          setLoadError(V.messageOf(error))
+        })
+      return () => {
+        alive = false
+      }
+    }, [version])
+
+    const localFiles = downloaded || []
+    const localNames = localFiles.map((entry) => entry.filename)
+    const providerOptions = Array.isArray(options)
+      ? options.filter((entry) => typeof entry === 'string' && entry !== '')
+      : []
+    const current = value === undefined || value === null ? '' : String(value)
+    const selectOptions = localFiles.map((entry) => ({ value: entry.filename, label: entry.label }))
+    const known = new Set(localNames)
+    const pushValue = (entry) => {
+      if (!entry || known.has(entry)) return
+      known.add(entry)
+      selectOptions.push({ value: entry, label: entry })
+    }
+    pushValue(current)
+    for (const name of providerOptions) pushValue(name)
+    selectOptions.push({ value: '__vcg_custom__', label: t('cvModelCustom') })
+    if (!localFiles.length) selectOptions.unshift({ value: '', label: t('cvModelsNotDownloaded') })
+    const declared = modelDeclarations(defModels)
+    const meta = localFiles.length
+      ? t('cvModelsPick') + ' · ' + localFiles.length
+      : loadError
+        ? t('cvModelsNotDownloaded')
+        : t('cvModelsEmpty') + ' · ' + t('cvModelsSettingsHint')
+    const metaTitle = loadError || t('cvModelsSettingsHint')
+
     return h(
       'div',
       { className: 'vcg-cv-model' },
@@ -2040,14 +2594,14 @@ window.__ModuleLoader__.load({
         { className: 'vcg-cv-model-row' },
         free
           ? h(TextInput, {
-              value: value || '',
+              value: current,
               placeholder: t('cvModelFree'),
               disabled: disabled,
               onChange: (next) => props.onChange(next),
               onKeyDown: stopEvent,
             })
           : h(Select, {
-              value: value || '',
+              value: current,
               options: selectOptions,
               disabled: disabled,
               onChange: (next) => {
@@ -2072,6 +2626,40 @@ window.__ModuleLoader__.load({
           h(Glyph, { name: free ? 'layers' : 'edit', size: 11 }),
         ),
       ),
+      h('div', { className: 'vcg-cv-model-meta', title: metaTitle }, meta),
+      declared.length
+        ? h(
+            'div',
+            { className: 'vcg-cv-model-decl' },
+            h('div', { className: 'vcg-cv-model-decl-title' }, t('cvModelsDeclared')),
+            declared.map((decl) => {
+              const exists = localNames.indexOf(decl.filename) >= 0
+              return h(
+                'div',
+                { className: 'vcg-cv-model-decl-row', key: decl.filename },
+                h('span', { className: 'vcg-cv-model-decl-name', title: decl.url }, decl.filename),
+                decl.size !== undefined && decl.size !== null && decl.size !== ''
+                  ? h('span', { className: 'vcg-cv-model-decl-size' }, V.formatBytes(decl.size))
+                  : null,
+                exists
+                  ? h('span', { className: 'vcg-cv-model-decl-ok' }, t('cvModelsDownloaded'))
+                  : h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'vcg-cv-model-dl',
+                        title: t('cvModelsDownload'),
+                        disabled: disabled,
+                        onPointerDown: stopEvent,
+                        onClick: () => onDownloadRequest && onDownloadRequest(decl),
+                      },
+                      h(Glyph, { name: 'download', size: 10 }),
+                      t('cvModelsDownload'),
+                    ),
+              )
+            }),
+          )
+        : null,
     )
   }
 
@@ -2158,7 +2746,7 @@ window.__ModuleLoader__.load({
   /* -------------------------------------------------------------- NodeCard */
 
   function NodeCard(props) {
-    const { node, def, result, selected, readOnly, connectedInputs, connect, hoverPort, modelOptions } = props
+    const { node, def, result, selected, readOnly, connectedInputs, connect, hoverPort, modelOptions, modelsVersion, onModelDownload } = props
     const [renaming, setRenaming] = React.useState(false)
     const [draft, setDraft] = React.useState('')
     const cancelledRef = React.useRef(false)
@@ -2174,6 +2762,8 @@ window.__ModuleLoader__.load({
     const engineOverride = Boolean(node.engineOverride)
     const statusTitle = t(STATUS_LABEL_KEY[status] || 'cvStatusIdle')
     const paramsSource = node.params && typeof node.params === 'object' ? node.params : EMPTY_OBJECT
+    const sourceBranch = String((def && def.repoBranch) || node.repoBranch || '').trim()
+    const unreviewed = (typeof V.isUnreviewed === 'function' ? V.isUnreviewed(def) || V.isUnreviewed(node) : false)
 
     const header = h(
       'div',
@@ -2237,6 +2827,16 @@ window.__ModuleLoader__.load({
             },
             title,
           ),
+      unreviewed
+        ? h(
+            'span',
+            {
+              className: 'vcg-cv-unreviewed',
+              title: sourceBranch ? t('cvUnreviewedFrom', { branch: sourceBranch }) : t('cvDevModeHint'),
+            },
+            t('cvUnreviewed'),
+          )
+        : null,
       status === 'running' || status === 'error' ? null : result && formatMs(result.ms) ? h('span', { className: 'vcg-cv-ms' }, formatMs(result.ms)) : null,
       h(
         'button',
@@ -2345,6 +2945,11 @@ window.__ModuleLoader__.load({
               value: Object.prototype.hasOwnProperty.call(paramsSource, param.id) ? paramsSource[param.id] : param.default,
               disabled: Boolean(readOnly),
               modelOptions,
+              defModels: def && Array.isArray(def.models) ? def.models : null,
+              modelsVersion: modelsVersion,
+              onDownloadRequest: (decl) => {
+                if (typeof onModelDownload === 'function') onModelDownload(node.id, param.id, decl)
+              },
               onChange: (paramId, value) => props.onParamChange(node.id, paramId, value),
             }),
           )
@@ -2438,6 +3043,16 @@ window.__ModuleLoader__.load({
           'span',
           { className: 'vcg-cv-lib-main' },
           h('span', { className: 'vcg-cv-lib-name' }, def.nameZh || def.name || def.id),
+          typeof V.isUnreviewed === 'function' && V.isUnreviewed(def)
+            ? h(
+                'span',
+                {
+                  className: 'vcg-cv-lib-unreviewed',
+                  title: def.repoBranch ? t('cvUnreviewedFrom', { branch: def.repoBranch }) : t('cvDevModeHint'),
+                },
+                t('cvUnreviewed'),
+              )
+            : null,
           h('span', { className: 'vcg-cv-lib-sub' }, (def.name && def.nameZh ? def.name + ' · ' : '') + engineLabel(def.engine)),
         ),
         h('span', { className: 'vcg-cv-lib-plus' }, h(Glyph, { name: 'plus', size: 12 })),
@@ -2961,6 +3576,9 @@ window.__ModuleLoader__.load({
     // Idle drag → "add node & connect" menu (CONTRACT §13.5):
     // { from: portRef, world: {x,y}, screen: {x,y} } | null
     const [picker, setPicker] = React.useState(null)
+    // §16.5 本地模型：下载完成后让模型参数下拉刷新（画布根层渲染弹窗，避免被 world 缩放裁切）。
+    const [modelsVersion, setModelsVersion] = React.useState(0)
+    const [modelDownload, setModelDownload] = React.useState(null)
 
     /* --------------------------------------------------------- view math */
     function applyView(nextView) {
@@ -4555,6 +5173,9 @@ window.__ModuleLoader__.load({
         connect: connectState,
         hoverPort: hoverPort,
         modelOptions: modelOptions,
+        modelsVersion: modelsVersion,
+        onModelDownload: (nodeId, paramId, declaration) =>
+          setModelDownload({ nodeId: nodeId, paramId: paramId, declaration: declaration }),
         onNodePointerDown: (event, item) => startNodeDrag(event, item),
         onPortPointerDown: (event, item, dir, port, index) => startConnect(event, item, dir, port, index),
         onCycleEngine: (item, itemDef) => cycleNodeEngine(item, itemDef),
@@ -4795,6 +5416,72 @@ window.__ModuleLoader__.load({
         if (def && picked.indexOf(def) < 0) picked.push(def)
       }
       return picked.slice(0, 4)
+    }
+
+    /* §16.4 Token 统计条：位于工具栏下方、画布上方，运行中实时求和 results[].usage。 */
+    function renderTokenBar() {
+      if (!nodes.length) return null
+      let prompt = 0
+      let completion = 0
+      let total = 0
+      let anyUsage = false
+      let done = 0
+      let failed = 0
+      let runningNodes = 0
+      let ms = 0
+      for (const node of nodes) {
+        const entry = results && results[node.id]
+        if (!entry) continue
+        if (entry.status === 'done') done += 1
+        else if (entry.status === 'error') failed += 1
+        else if (entry.status === 'running') runningNodes += 1
+        const nodeMs = Number(entry.ms)
+        if (Number.isFinite(nodeMs) && nodeMs > 0) ms += nodeMs
+        const usage = entry.usage
+        if (!usage || typeof usage !== 'object') continue
+        const hasPrompt = usage.prompt_tokens !== undefined && usage.prompt_tokens !== null
+        const hasCompletion = usage.completion_tokens !== undefined && usage.completion_tokens !== null
+        const hasTotal = usage.total_tokens !== undefined && usage.total_tokens !== null
+        const promptValue = hasPrompt ? Number(usage.prompt_tokens) : 0
+        const completionValue = hasCompletion ? Number(usage.completion_tokens) : 0
+        const totalValue = hasTotal ? Number(usage.total_tokens) : (hasPrompt ? promptValue : 0) + (hasCompletion ? completionValue : 0)
+        if (!hasPrompt && !hasCompletion && !hasTotal) continue
+        anyUsage = true
+        prompt += Number.isFinite(promptValue) ? promptValue : 0
+        completion += Number.isFinite(completionValue) ? completionValue : 0
+        total += Number.isFinite(totalValue) ? totalValue : 0
+      }
+      if (!anyUsage && !running && done === 0 && failed === 0 && runningNodes === 0) return null
+      const format = (value) => (typeof V.formatCount === 'function' ? V.formatCount(value) : String(Math.round(value)))
+      const elapsed = ms >= 1000 ? (ms / 1000).toFixed(1) + 's' : Math.round(ms) + 'ms'
+      return h(
+        'div',
+        { className: 'vcg-cv-tokens', role: 'status', title: t('cvTokensTitle') },
+        h(
+          'div',
+          { className: 'vcg-cv-tokens-main' },
+          h('span', { className: 'vcg-cv-tokens-label' }, t('cvTokens')),
+          anyUsage
+            ? h(
+                V.Fragment,
+                null,
+                h('span', { className: 'vcg-cv-token vcg-cv-token-in' }, t('cvTokensInput', { n: format(prompt) })),
+                h('span', { className: 'vcg-cv-token-sep' }, '·'),
+                h('span', { className: 'vcg-cv-token vcg-cv-token-out' }, t('cvTokensOutput', { n: format(completion) })),
+                h('span', { className: 'vcg-cv-token-sep' }, '·'),
+                h('span', { className: 'vcg-cv-token vcg-cv-token-total' }, t('cvTokensTotal', { n: format(total) })),
+              )
+            : h('span', { className: 'vcg-cv-tokens-empty' }, t('cvTokensEmpty')),
+        ),
+        h(
+          'div',
+          { className: 'vcg-cv-tokens-side' },
+          runningNodes > 0 ? h('span', { className: 'vcg-cv-tokens-chip vcg-cv-tokens-running' }, t('cvTokensRunning', { n: runningNodes })) : null,
+          h('span', { className: 'vcg-cv-tokens-chip' }, t('cvTokensNodes', { done: done + failed, total: nodes.length })),
+          failed > 0 ? h('span', { className: 'vcg-cv-tokens-chip vcg-cv-tokens-failed' }, t('cvTokensFailed', { n: failed })) : null,
+          ms > 0 ? h('span', { className: 'vcg-cv-tokens-chip' }, t('cvTokensMs', { s: elapsed })) : null,
+        ),
+      )
     }
 
     function renderEmptyGuide() {
@@ -5287,9 +5974,27 @@ window.__ModuleLoader__.load({
               onDragStart: onLibraryDragStart,
             })
           : null,
-        h('div', { className: 'vcg-cv-main' }, renderToolbar(), h('div', { className: 'vcg-cv-stage-wrap' }, stage)),
+        h('div', { className: 'vcg-cv-main' }, renderToolbar(), renderTokenBar(), h('div', { className: 'vcg-cv-stage-wrap' }, stage)),
         renderPreview(),
       ),
+      V.ModelDownloadModal
+        ? h(V.ModelDownloadModal, {
+            open: Boolean(modelDownload),
+            declaration: modelDownload ? modelDownload.declaration : null,
+            onClose: () => setModelDownload(null),
+            onDone: (info) => {
+              const target = modelDownload
+              setModelsVersion((value) => value + 1)
+              setModelDownload(null)
+              if (!target) return
+              const node = nodesById[target.nodeId]
+              const params = node && node.params && typeof node.params === 'object' ? node.params : {}
+              const current = params[target.paramId]
+              const empty = current === undefined || current === null || current === ''
+              if (empty && info && info.filename) changeParam(target.nodeId, target.paramId, info.filename)
+            },
+          })
+        : null,
     )
   }
 
@@ -5324,6 +6029,7 @@ window.__ModuleLoader__.load({
     Badge,
     Section,
     StyleTag,
+    Modal,
   } = V.ui
 
   /* ------------------------------------------------------------- locales */
@@ -6191,6 +6897,313 @@ window.__ModuleLoader__.load({
 
   /* ------------------------------------------------------------- main page */
 
+  /* ------------------------------------------- §16.5 本地工具与模型面板 */
+
+  /** 宿主返回的工具状态（true/false/{installed,version}）→ 可读文案。 */
+  function toolStateText(value) {
+    if (value && typeof value === 'object') {
+      const ok = value.installed === true || value.ok === true || value.available === true || value.ready === true
+      const version = value.version || value.command || ''
+      return (ok ? t('cvLocalInstalled') : t('cvLocalMissing')) + (version ? ' · ' + version : '')
+    }
+    if (value === true) return t('cvLocalInstalled')
+    if (value === false || value === null || value === undefined || value === '') return t('cvLocalMissing')
+    return String(value)
+  }
+
+  function toolStateOk(value) {
+    if (value && typeof value === 'object') return value.installed === true || value.ok === true || value.available === true || value.ready === true
+    return value === true || (typeof value === 'string' && value !== '')
+  }
+
+  function ToolRow({ label, children }) {
+    return h(
+      'div',
+      { className: 'vcg-tool-kv' },
+      h('span', { className: 'vcg-tool-kv-label' }, label),
+      h('span', { className: 'vcg-tool-kv-value' }, children),
+    )
+  }
+
+  /**
+   * §16.5 本地工具与模型：
+   * 检测/安装 PyTorch、safetensors（安装中每 2s 轮询），列出已下载模型，
+   * 并通过 V.ModelDownloadModal 完成不可信来源的二次确认下载。
+   */
+  function LocalToolsSection(props) {
+    const proMode = Boolean(props && props.proMode)
+    const store = V.useStore()
+    /* 表单里的专业模式要保存后宿主才生效：RPC 以宿主状态为准。 */
+    const hostProMode = Boolean(store.state && store.state.proMode)
+    const active = proMode && hostProMode
+    const [status, setStatus] = React.useState(null)
+    const [statusError, setStatusError] = React.useState('')
+    const [detecting, setDetecting] = React.useState(false)
+    const [installing, setInstalling] = React.useState('')
+    const [installError, setInstallError] = React.useState('')
+    const [notice, setNotice] = React.useState('')
+    const [models, setModels] = React.useState(null)
+    const [modelsError, setModelsError] = React.useState('')
+    const [modelsLoading, setModelsLoading] = React.useState(false)
+    const [form, setForm] = React.useState({ url: '', filename: '', sha256: '', size: '', format: 'safetensors' })
+    const [formError, setFormError] = React.useState('')
+    const [downloadTarget, setDownloadTarget] = React.useState(null)
+
+    const loadStatus = React.useCallback(async (quiet) => {
+      if (!quiet) setDetecting(true)
+      try {
+        const result = await V.rpc('toolsStatus')
+        setStatus(result && typeof result === 'object' ? result : {})
+        setStatusError('')
+        return result
+      } catch (error) {
+        if (!quiet) setStatusError(msgOf(error))
+        return null
+      } finally {
+        if (!quiet) setDetecting(false)
+      }
+    }, [])
+
+    const loadModels = React.useCallback(async () => {
+      setModelsLoading(true)
+      try {
+        const result = await V.rpc('modelsList')
+        setModels(asArray(result && result.models))
+        setModelsError('')
+      } catch (error) {
+        setModels([])
+        setModelsError(msgOf(error))
+      } finally {
+        setModelsLoading(false)
+      }
+    }, [])
+
+    React.useEffect(() => {
+      if (!active) return undefined
+      loadStatus(false)
+      loadModels()
+      return undefined
+    }, [active, loadStatus, loadModels])
+
+    const busy = installing !== '' || Boolean(status && status.installing)
+    React.useEffect(() => {
+      if (!active || !busy) return undefined
+      const timer = setInterval(() => {
+        loadStatus(true)
+      }, 2000)
+      return () => clearInterval(timer)
+    }, [active, busy, loadStatus])
+
+    async function install(component) {
+      if (installing !== '') return
+      setInstalling(component)
+      setInstallError('')
+      setNotice(t('cvLocalInstallStarted', { component: component }))
+      try {
+        await V.rpc('toolsInstall', { component: component })
+        await loadStatus(true)
+        await loadModels()
+      } catch (error) {
+        setInstallError(msgOf(error))
+      } finally {
+        setInstalling('')
+      }
+    }
+
+    function requestDownload() {
+      const url = String(form.url || '').trim()
+      const filename = String(form.filename || '').trim()
+      if (!/^https:\/\//i.test(url)) {
+        setFormError(t('cvModelsNeedUrl'))
+        return
+      }
+      if (!filename) {
+        setFormError(t('cvModelsNeedFilename'))
+        return
+      }
+      const size = String(form.size || '').trim() === '' ? undefined : Number(form.size)
+      setFormError('')
+      setDownloadTarget({
+        url: url,
+        filename: filename,
+        sha256: String(form.sha256 || '').trim(),
+        size: Number.isFinite(size) ? size : undefined,
+        format: form.format || '',
+      })
+    }
+
+    function setField(key, value) {
+      setForm((previous) => Object.assign({}, previous, { [key]: value }))
+    }
+
+    const statusRows = []
+    if (status) {
+      statusRows.push(
+        h(ToolRow, { key: 'python', label: t('cvLocalPython') }, h(Badge, { color: toolStateOk(status.python) ? 'var(--dsw-alias-state-success-primary)' : 'var(--dsw-alias-state-warn-primary)' }, toolStateText(status.python))),
+        h(ToolRow, { key: 'pip', label: t('cvLocalPip') }, h(Badge, { color: toolStateOk(status.pip) ? 'var(--dsw-alias-state-success-primary)' : 'var(--dsw-alias-state-warn-primary)' }, toolStateText(status.pip))),
+        h(ToolRow, { key: 'torch', label: t('cvLocalTorch') }, h(Badge, { color: toolStateOk(status.torch) ? 'var(--dsw-alias-state-success-primary)' : 'var(--dsw-alias-state-warn-primary)' }, toolStateText(status.torch))),
+        h(ToolRow, { key: 'safetensors', label: t('cvLocalSafetensors') }, h(Badge, { color: toolStateOk(status.safetensors) ? 'var(--dsw-alias-state-success-primary)' : 'var(--dsw-alias-state-warn-primary)' }, toolStateText(status.safetensors))),
+        h(ToolRow, { key: 'cuda', label: t('cvLocalCuda') }, h(Badge, null, toolStateText(status.cuda))),
+        h(
+          ToolRow,
+          { key: 'disk', label: t('cvLocalDisk') },
+          h('span', { className: 'vcg-tool-mono' }, Number.isFinite(Number(status.diskFreeMB)) ? V.formatBytes(Number(status.diskFreeMB) * 1024 * 1024) : t('cvLocalStatusUnknown')),
+        ),
+        h(
+          ToolRow,
+          { key: 'modelsDir', label: t('cvLocalModelsDir') },
+          h('span', { className: 'vcg-tool-mono', title: String(status.modelsDir || '') }, String(status.modelsDir || t('cvLocalStatusUnknown'))),
+        ),
+      )
+      if (status.installing) {
+        statusRows.push(
+          h(
+            ToolRow,
+            { key: 'progress', label: t('cvLocalProgress') },
+            h('span', { className: 'vcg-row' }, h(Spinner, { size: 12 }), String(status.progress === undefined || status.progress === null ? '' : status.progress)),
+          ),
+        )
+      }
+    }
+
+    const installButtons = h(
+      'div',
+      { className: 'vcg-row vcg-tool-actions' },
+      h(
+        Button,
+        { size: 'sm', onClick: () => loadStatus(false), disabled: detecting || busy, icon: detecting ? undefined : 'refresh' },
+        detecting ? t('cvLocalDetecting') : t('cvLocalDetect'),
+      ),
+      h(
+        Button,
+        { size: 'sm', onClick: () => install('torch'), disabled: busy || !proMode },
+        installing === 'torch' ? h('span', { className: 'vcg-row' }, h(Spinner, { size: 12 }), t('cvLocalInstalling')) : t('cvLocalInstallTorch'),
+      ),
+      h(
+        Button,
+        { size: 'sm', onClick: () => install('safetensors'), disabled: busy || !proMode },
+        installing === 'safetensors' ? h('span', { className: 'vcg-row' }, h(Spinner, { size: 12 }), t('cvLocalInstalling')) : t('cvLocalInstallSafetensors'),
+      ),
+      h(Button, { size: 'sm', variant: 'primary', onClick: () => install('all'), disabled: busy || !proMode }, t('cvLocalInstallAll')),
+    )
+
+    const modelRows = (models || []).map((model, index) => {
+      const entry = model && typeof model === 'object' ? model : { name: String(model) }
+      const filename = V.basename(entry.path || entry.filename || entry.name || '')
+      const label = entry.meta && entry.meta.title ? entry.meta.title : entry.name || filename
+      return h(
+        'div',
+        { key: filename || 'm-' + index, className: 'vcg-tool-model-row' },
+        h('span', { className: 'vcg-tool-model-name', title: String(entry.path || label) }, label),
+        h('span', { className: 'vcg-tool-model-cell' }, entry.size !== undefined && entry.size !== null ? V.formatBytes(entry.size) : '—'),
+        h('span', { className: 'vcg-tool-model-cell' }, String(entry.format || '—')),
+        h('span', { className: 'vcg-tool-model-cell' }, entry.mtime ? V.formatTime(entry.mtime) || '—' : '—'),
+      )
+    })
+
+    const modelsBlock = h(
+      'div',
+      { className: 'vcg-tool-models' },
+      h(
+        'div',
+        { className: 'vcg-row', style: { justifyContent: 'space-between' } },
+        h('div', { className: 'vcg-title', style: { fontSize: 12.5 } }, t('cvModels')),
+        h(
+          Button,
+          { size: 'sm', variant: 'ghost', onClick: loadModels, disabled: modelsLoading || !proMode, icon: modelsLoading ? undefined : 'refresh' },
+          modelsLoading ? h('span', { className: 'vcg-row' }, h(Spinner, { size: 12 }), t('loading')) : t('cvModelsRefresh'),
+        ),
+      ),
+      h('div', { className: 'vcg-hint' }, t('cvModelsDesc')),
+      modelsError ? h(Banner, { kind: 'error', title: t('cvLocalDetectFailed') }, modelsError) : null,
+      modelRows.length === 0
+        ? h('div', { className: 'vcg-tool-empty' }, modelsLoading ? h(Spinner, { size: 14 }) : t('cvModelsEmpty'))
+        : h(
+            'div',
+            { className: 'vcg-tool-model-list' },
+            h(
+              'div',
+              { className: 'vcg-tool-model-row vcg-tool-model-head' },
+              h('span', { className: 'vcg-tool-model-name' }, t('cvModelsName')),
+              h('span', { className: 'vcg-tool-model-cell' }, t('cvModelsSize')),
+              h('span', { className: 'vcg-tool-model-cell' }, t('cvModelsFormat')),
+              h('span', { className: 'vcg-tool-model-cell' }, t('cvModelsUpdated')),
+            ),
+            modelRows,
+          ),
+      h(
+        'div',
+        { className: 'vcg-tool-download' },
+        h('div', { className: 'vcg-title', style: { fontSize: 12.5 } }, t('cvModelsDownload')),
+        h(
+          Field,
+          { label: t('cvModelsUrl') },
+          h(TextInput, { value: form.url, placeholder: t('cvModelsUrlPh'), onChange: (value) => setField('url', value) }),
+        ),
+        h(
+          'div',
+          { className: 'vcg-set-grid2' },
+          h(Field, { label: t('cvModelsFilename') }, h(TextInput, { value: form.filename, placeholder: t('cvModelsFilenamePh'), onChange: (value) => setField('filename', value) })),
+          h(Field, { label: t('cvModelsFormatField') }, h(Select, { value: form.format, options: asArray(V.consts && V.consts.MODEL_FORMATS), onChange: (value) => setField('format', value) })),
+          h(Field, { label: t('cvModelsSha') }, h(TextInput, { value: form.sha256, placeholder: 'sha256', onChange: (value) => setField('sha256', value) })),
+          h(Field, { label: t('cvModelsSizeBytes') }, h(NumberInput, { value: form.size, min: 0, step: 1, onChange: (value) => setField('size', value) })),
+        ),
+        formError ? h(Banner, { kind: 'error' }, formError) : null,
+        h(
+          'div',
+          { className: 'vcg-row' },
+          h(Button, { size: 'sm', variant: 'primary', onClick: requestDownload, disabled: !proMode }, t('cvModelsTrustCheck') + ' / ' + t('cvModelsDownload')),
+        ),
+      ),
+    )
+
+    const body = !proMode
+      ? h(Banner, { kind: 'info', title: t('cvLocalToolsProOnly') })
+      : !hostProMode
+        ? h(Banner, { kind: 'info', title: t('setProToggle'), action: null }, t('cvLocalProSaveFirst'))
+        : h(
+          V.Fragment,
+          null,
+          h('div', { className: 'vcg-hint' }, t('cvLocalToolsDesc')),
+          statusError ? h(Banner, { kind: 'error', title: t('cvLocalDetectFailed') }, statusError) : null,
+          status && (!toolStateOk(status.torch) || !toolStateOk(status.safetensors))
+            ? h(Banner, { kind: 'warn', title: t('cvLocalMissing') }, t('cvLocalInstallSizes'))
+            : null,
+          status ? h('div', { className: 'vcg-tool-grid' }, statusRows) : h('div', { className: 'vcg-hint' }, t('cvLocalNotDetected')),
+          installButtons,
+          h('div', { className: 'vcg-hint' }, t('cvLocalInstallSizes')),
+          notice ? h(Banner, { kind: 'info' }, notice) : null,
+          installError ? h(Banner, { kind: 'error', title: t('cvLocalInstallFailed') }, installError) : null,
+          status && status.logTail
+            ? h(
+                'div',
+                { className: 'vcg-col' },
+                h('div', { className: 'vcg-label' }, t('cvLocalLog')),
+                h('pre', { className: 'vcg-code vcg-tool-log' }, String(status.logTail)),
+              )
+            : null,
+          modelsBlock,
+          downloadTarget
+            ? h(V.ModelDownloadModal, {
+                open: true,
+                declaration: downloadTarget,
+                onClose: () => setDownloadTarget(null),
+                onDone: () => {
+                  setDownloadTarget(null)
+                  setNotice(t('cvModelsDownloadOk'))
+                  loadModels()
+                },
+              })
+            : null,
+        )
+
+    return h(
+      Section,
+      { title: t('cvLocalTools'), extra: proMode ? null : h(Badge, null, t('cvLocalToolsProOnly')) },
+      body,
+    )
+  }
+
   function SettingsPage() {
     const store = V.useStore()
     const [form, setForm] = React.useState(null)
@@ -6212,6 +7225,10 @@ window.__ModuleLoader__.load({
     const [syncing, setSyncing] = React.useState(false)
     const [syncResult, setSyncResult] = React.useState(null)
     const [syncError, setSyncError] = React.useState('')
+    /* §16.2 开发者模式：与专业模式独立，开关立即保存并要求危险确认。 */
+    const devMode = Boolean(store.state && store.state.devMode)
+    const [devModeBusy, setDevModeBusy] = React.useState(false)
+    const [devModeConfirm, setDevModeConfirm] = React.useState(false)
     const okTimer = React.useRef(null)
 
     const showOk = (text) => {
@@ -6226,6 +7243,31 @@ window.__ModuleLoader__.load({
       },
       [],
     )
+
+    async function applyDevMode(next) {
+      if (devModeBusy) return
+      setDevModeBusy(true)
+      setPageError('')
+      try {
+        const saved = await V.rpc('saveSettings', { devMode: Boolean(next) })
+        const savedState = saved && saved.state && typeof saved.state === 'object' ? saved.state : null
+        if (!next) {
+          // §16.2 关闭开发者模式后回到 main 分支（宿主已自动回到 main，此处兜底）。
+          const switched = await V.rpc('setRepoBranch', { branch: 'main' }).catch(() => null)
+          if (switched && switched.state) V.setStore({ state: switched.state, loaded: true, loading: false, error: '' })
+        }
+        if (savedState) V.setStore({ state: savedState, loaded: true, loading: false, error: '' })
+        const state = await V.refresh().catch(() => null)
+        const actual = Boolean(state && state.devMode)
+        if (next && !actual) setPageError(t('cvDevModeUnsupported'))
+        else showOk(next ? t('cvDevModeOn') : t('cvDevModeOff'))
+        setDevModeConfirm(false)
+      } catch (error) {
+        setPageError(msgOf(error))
+      } finally {
+        setDevModeBusy(false)
+      }
+    }
 
     async function loadNodes() {
       try {
@@ -6824,6 +7866,36 @@ window.__ModuleLoader__.load({
               ),
         ),
 
+        /* ---------------------------------------------- dev mode (§16.2) */
+        h(
+          Section,
+          {
+            title: t('cvDevMode'),
+            extra: devMode ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvDevModeBadge')) : null,
+          },
+          h('div', { className: 'vcg-hint' }, t('cvDevModeHint')),
+          h(Toggle, {
+            checked: devMode,
+            disabled: devModeBusy,
+            label: t('cvDevMode'),
+            hint: devMode ? t('cvBranchHint') : t('cvDevModeOnlyMain'),
+            onChange: (value) => {
+              if (value) setDevModeConfirm(true)
+              else applyDevMode(false)
+            },
+          }),
+          h(
+            'div',
+            { className: 'vcg-row' },
+            devMode
+              ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvDevModeEnabled'))
+              : h(Button, { size: 'sm', variant: 'ghost', icon: 'warning', onClick: () => setDevModeConfirm(true), disabled: devModeBusy }, t('cvDevModeDangerTitle')),
+          ),
+        ),
+
+        /* ------------------------------------- local tools & models (§16.5) */
+        h(LocalToolsSection, { proMode: Boolean(form.proMode) }),
+
         /* ------------------------------------------------ node repo */
         h(
           Section,
@@ -6955,6 +8027,46 @@ window.__ModuleLoader__.load({
         )
       : null
 
+    const devModeModal = h(
+      Modal,
+      {
+        open: devModeConfirm,
+        title: t('cvDevModeDangerTitle'),
+        onClose: () => {
+          if (!devModeBusy) setDevModeConfirm(false)
+        },
+        width: 'min(600px,100%)',
+        footer: h(
+          'div',
+          { className: 'vcg-row', style: { marginLeft: 'auto' } },
+          h(Button, { onClick: () => setDevModeConfirm(false), disabled: devModeBusy }, t('cancel')),
+          h(
+            Button,
+            {
+              variant: 'danger',
+              icon: devModeBusy ? undefined : 'warning',
+              disabled: devModeBusy,
+              onClick: () => applyDevMode(true),
+            },
+            devModeBusy ? h('span', { className: 'vcg-row' }, h(Spinner, { size: 12 }), t('saving')) : t('cvDevModeConfirm'),
+          ),
+        ),
+      },
+      h(
+        'div',
+        { className: 'vcg-model-modal' },
+        h(Banner, { kind: 'warn', title: t('cvDevModeDangerTitle') }, t('cvDevModeDangerLead')),
+        h(
+          'ul',
+          { className: 'vcg-model-risk' },
+          h('li', null, t('cvDevModeRisk1')),
+          h('li', null, t('cvDevModeRisk2')),
+          h('li', null, t('cvDevModeRisk3')),
+        ),
+        h('div', { className: 'vcg-hint' }, t('cvDevModeDangerTail')),
+      ),
+    )
+
     return h(
       'div',
       { className: 'vcg-set-root vcg-scroll' },
@@ -6969,6 +8081,7 @@ window.__ModuleLoader__.load({
         body,
         actionBar,
       ),
+      devModeModal,
     )
   }
 
@@ -7009,11 +8122,29 @@ window.__ModuleLoader__.load({
 .vcg-set-actions-info{font-size:12px;color:var(--dsw-alias-label-secondary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vcg-set-action-dirty{color:var(--dsw-alias-state-warn-primary);font-weight:600}
 .vcg-set-loading{display:flex;align-items:center;justify-content:center;padding:60px 0}
+/* §16.5 本地工具与模型 */
+.vcg-tool-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px 16px;border:1px solid var(--dsw-alias-border-l1);border-radius:9px;padding:9px 11px;background:color-mix(in srgb,var(--dsw-alias-bg-base) 45%,transparent)}
+.vcg-tool-kv{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;min-width:0}
+.vcg-tool-kv-label{color:var(--dsw-alias-label-secondary);white-space:nowrap;flex:none}
+.vcg-tool-kv-value{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+.vcg-tool-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--dsw-alias-label-secondary);word-break:break-all}
+.vcg-tool-actions{flex-wrap:wrap;gap:8px}
+.vcg-tool-models{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--dsw-alias-border-l1);padding-top:10px}
+.vcg-tool-model-list{display:flex;flex-direction:column;gap:3px;max-height:220px;overflow:auto}
+.vcg-tool-model-row{display:grid;grid-template-columns:minmax(0,2.2fr) 90px 90px 130px;gap:8px;align-items:center;font-size:11.5px;padding:4px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:var(--dsw-alias-bg-layer-1)}
+.vcg-tool-model-head{background:var(--dsw-alias-bg-layer-2);font-weight:600;color:var(--dsw-alias-label-secondary);border-style:dashed}
+.vcg-tool-model-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vcg-tool-model-cell{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-tool-empty{padding:14px;text-align:center;border:1px dashed var(--dsw-alias-border-l2);border-radius:8px;color:var(--dsw-alias-label-secondary);font-size:12px}
+.vcg-tool-download{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+.vcg-tool-log{max-height:160px}
 @media (max-width:720px){
   .vcg-set-page{padding:14px 12px 80px}
   .vcg-set-grid2,.vcg-set-grid3{grid-template-columns:minmax(0,1fr)}
   .vcg-set-provider-head{align-items:flex-start}
   .vcg-set-actions{flex-wrap:wrap}
+  .vcg-tool-model-row{grid-template-columns:minmax(0,1fr) 70px 80px}
+  .vcg-tool-model-row > :last-child{display:none}
 }
 `
 
@@ -9213,7 +10344,7 @@ window.__ModuleLoader__.load({
     )
   }
 
-  function NodeCard({ node, installed, blocked, importable, selected, locked, onToggle, onOpen }) {
+  function NodeCard({ node, installed, blocked, devLocked, unreviewed, importable, selected, locked, onToggle, onOpen }) {
     const inputs = asArray(node.inputs)
     const outputs = asArray(node.outputs)
     const classes = ['vcg-repo-card']
@@ -9263,6 +10394,16 @@ window.__ModuleLoader__.load({
         h(Badge, null, categoryText(node.category)),
         h(Badge, null, t('repoPortsValue', { inputs: inputs.length, outputs: outputs.length })),
         h(Badge, null, t('repoParamsCount', { count: asArray(node.params).length })),
+        unreviewed
+          ? h(
+              Badge,
+              {
+                color: 'var(--dsw-alias-state-warn-primary)',
+                title: str(node.repoBranch) ? t('cvUnreviewedFrom', { branch: str(node.repoBranch) }) : t('cvDevModeHint'),
+              },
+              t('cvUnreviewed'),
+            )
+          : null,
         requiresProMode(node)
           ? h(
               Badge,
@@ -9279,9 +10420,11 @@ window.__ModuleLoader__.load({
           { className: 'vcg-repo-card-state' },
           installed
             ? h(Badge, { color: 'var(--dsw-alias-state-success-primary)' }, t('repoInstalled'))
-            : blocked
-              ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('repoNeedPro'))
-              : h(Badge, null, t('repoAvailable')),
+            : devLocked
+              ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvUnreviewed'))
+              : blocked
+                ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('repoNeedPro'))
+                : h(Badge, null, t('repoAvailable')),
         ),
         h(
           Button,
@@ -9299,7 +10442,7 @@ window.__ModuleLoader__.load({
     )
   }
 
-  function NodeDetail({ node, installed, blocked, importable, installing, error, onOpenSettings }) {
+  function NodeDetail({ node, installed, blocked, devLocked, unreviewed, importable, installing, error, onOpenSettings }) {
     const inputs = asArray(node.inputs)
     const outputs = asArray(node.outputs)
     const params = asArray(node.params)
@@ -9368,6 +10511,9 @@ window.__ModuleLoader__.load({
       str(node.source)
         ? h(KVRow, { key: 'source', label: t('repoSourceBadge'), children: str(node.source) })
         : null,
+      str(node.repoBranch)
+        ? h(KVRow, { key: 'branch', label: t('cvBranchShort'), children: str(node.repoBranch) })
+        : null,
     ]
 
     return h(
@@ -9393,9 +10539,34 @@ window.__ModuleLoader__.load({
               ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('repoNeedPro'))
               : h(Badge, null, t('repoAvailable')),
           requiresProMode(node) ? h(Badge, { color: 'var(--dsw-alias-brand-primary)' }, t('repoHttpNode')) : null,
+          unreviewed
+            ? h(
+                Badge,
+                {
+                  color: 'var(--dsw-alias-state-warn-primary)',
+                  title: str(node.repoBranch) ? t('cvUnreviewedFrom', { branch: str(node.repoBranch) }) : t('cvDevModeHint'),
+                },
+                t('cvUnreviewed'),
+              )
+            : null,
         ),
       ),
       h('div', { className: 'vcg-repo-detail-desc' }, str(node.description) || t('repoNoDescription')),
+      unreviewed
+        ? h(
+            Banner,
+            {
+              kind: 'warn',
+              title: t('cvBranchUnreviewed'),
+              action: devLocked ? h(Button, { size: 'sm', onClick: onOpenSettings }, t('repoOpenSettings')) : null,
+            },
+            devLocked
+              ? t('cvUnreviewedNodeHint')
+              : str(node.repoBranch)
+                ? t('cvUnreviewedFrom', { branch: str(node.repoBranch) })
+                : t('cvDevModeHint'),
+          )
+        : null,
       blocked
         ? h(
             Banner,
@@ -9722,7 +10893,14 @@ window.__ModuleLoader__.load({
 
     const nodeRepoState = store.state && typeof store.state.nodeRepo === 'object' ? store.state.nodeRepo : {}
     const proMode = Boolean(store.state && store.state.proMode)
+    const devMode = typeof V.readDevMode === 'function' ? V.readDevMode(store.state) : Boolean(store.state && store.state.devMode)
+    const branch = typeof V.readRepoBranch === 'function' ? V.readRepoBranch(store.state) : str(nodeRepoState.branch) || 'main'
     const configured = Boolean(str(nodeRepoState.githubBase) || str(nodeRepoState.giteaBase))
+    const defaultBranches = V.consts && Array.isArray(V.consts.REPO_BRANCHES) ? V.consts.REPO_BRANCHES.slice() : ['main', 'dev', 'bug', 'recheck']
+    const [branches, setBranches] = React.useState(defaultBranches)
+    const [branchInfo, setBranchInfo] = React.useState([])
+    const [branchBusy, setBranchBusy] = React.useState(false)
+    const [branchError, setBranchError] = React.useState('')
 
     /* --- data loading --- */
 
@@ -9768,6 +10946,37 @@ window.__ModuleLoader__.load({
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [source])
 
+    /* §16.2 分支清单：宿主暂不支持 repoBranches 时退回内置主/开发/缺陷/复核分支。 */
+    React.useEffect(() => {
+      let alive = true
+      V.rpc('repoBranches')
+        .then((result) => {
+          if (!alive || !result) return
+          const raw = Array.isArray(result) ? result : asArray(result.branches)
+          const infos = raw
+            .map((item) =>
+              typeof item === 'string'
+                ? { branch: item }
+                : {
+                    branch: str(item && (item.branch || item.name || item.id)),
+                    available: item && item.available !== false,
+                    current: Boolean(item && item.current),
+                    nodeCount: item && item.nodeCount,
+                    workflowCount: item && item.workflowCount,
+                    error: str(item && item.error),
+                  },
+            )
+            .filter((item) => item.branch)
+          if (!infos.length) return
+          setBranchInfo(infos)
+          setBranches(infos.map((item) => item.branch))
+        })
+        .catch(() => {})
+      return () => {
+        alive = false
+      }
+    }, [])
+
     React.useEffect(
       () => () => {
         if (deleteTimer.current) clearTimeout(deleteTimer.current)
@@ -9803,7 +11012,13 @@ window.__ModuleLoader__.load({
     }, [nodesAsync.data])
 
     const isInstalled = (node) => Boolean(node && (node.installed === true || installedIds.has(str(node.id))))
-    const isBlocked = (node) => requiresProMode(node) && !proMode
+    const isUnreviewedNode = (node) =>
+      typeof V.isUnreviewed === 'function'
+        ? V.isUnreviewed(node)
+        : Boolean(node && ((str(node.repoBranch) && str(node.repoBranch) !== 'main') || node.reviewState === 'unreviewed'))
+    /* §16.2 开发者模式关闭时，未审核分支的节点不可导入。 */
+    const isDevLocked = (node) => isUnreviewedNode(node) && !devMode
+    const isBlocked = (node) => Boolean(node) && ((requiresProMode(node) && !proMode) || isDevLocked(node))
     const isImportable = (node) => Boolean(node) && !isInstalled(node) && !isBlocked(node) && node.canImport !== false
 
     const categoryCounts = React.useMemo(() => {
@@ -9854,6 +11069,8 @@ window.__ModuleLoader__.load({
     const detailNode = detailId !== '' ? nodeById.get(detailId) : null
     const detailInstalled = detailNode ? isInstalled(detailNode) : false
     const detailBlocked = detailNode && !detailInstalled ? isBlocked(detailNode) : false
+    const detailDevLocked = detailNode && !detailInstalled ? isDevLocked(detailNode) : false
+    const detailUnreviewed = detailNode ? isUnreviewedNode(detailNode) : false
     const detailImportable = detailNode ? isImportable(detailNode) : false
     const detailTitle = detailNode ? nodeTitle(detailNode) : ''
 
@@ -9927,7 +11144,9 @@ window.__ModuleLoader__.load({
       const resolved = repoData && repoData.source ? str(repoData.source) : ''
       const chosen = source !== 'auto' ? source : ''
       const reposSource = resolved || chosen
-      return reposSource ? { id: id, source: reposSource } : { id: id }
+      const args = { id: id, branch: branch }
+      if (reposSource) args.source = reposSource
+      return args
     }
 
     function nameOfResult(result, fallbackNode) {
@@ -10008,6 +11227,36 @@ window.__ModuleLoader__.load({
         items: succeeded.concat(failed),
       })
       if (okCount > 0) reloadAfterInstall()
+    }
+
+    /* §16.2 切换分支：非 main 需要开发者模式；切换后重新拉取仓库与节点列表。 */
+    async function changeBranch(next) {
+      const target = str(next) || 'main'
+      if (branchBusy || target === branch) return
+      if (!devMode && target !== 'main') {
+        showNotice({ kind: 'warn', title: t('cvBranch'), message: t('cvBranchLocked') })
+        return
+      }
+      const info = branchInfo.find((item) => item.branch === target)
+      if (info && info.available === false) {
+        showNotice({ kind: 'warn', title: t('cvBranch'), message: t('cvBranchUnavailable') + (info.error ? '：' + info.error : '') })
+        return
+      }
+      setBranchBusy(true)
+      setBranchError('')
+      try {
+        const result = await V.rpc('setRepoBranch', { branch: target })
+        if (result && result.state) V.setStore({ state: result.state, loaded: true, loading: false, error: '' })
+        else await V.refresh().catch(() => {})
+        nodesAsync.reload()
+        await loadRepo(true)
+        showNotice({ kind: 'success', title: t('cvBranch'), message: t('cvBranchChanged', { branch: target }) })
+      } catch (error) {
+        setBranchError(msgOf(error))
+        showNotice({ kind: 'error', title: t('cvBranchFailed'), message: msgOf(error) })
+      } finally {
+        setBranchBusy(false)
+      }
     }
 
     async function syncAll() {
@@ -10096,6 +11345,9 @@ window.__ModuleLoader__.load({
         proMode
           ? h(Badge, { color: 'var(--dsw-alias-state-success-primary)' }, t('repoProOn'))
           : h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('repoProOff')),
+        devMode
+          ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvDevModeBadge'))
+          : h(Badge, null, t('cvBranchShort') + '：' + branch),
         h(
           Button,
           {
@@ -10138,6 +11390,37 @@ window.__ModuleLoader__.load({
         ],
         onChange: changeSource,
       }),
+    )
+
+    /* §16.2 分支选择器：开发者模式关闭时锁定 main 并提示。 */
+    const branchMeta = new Map(branchInfo.map((item) => [item.branch, item]))
+    const branchOptions = branches.slice()
+    if (branchOptions.indexOf(branch) < 0) branchOptions.push(branch)
+    if (branchOptions.indexOf('main') < 0) branchOptions.unshift('main')
+    const branchLabel = (name) => {
+      const meta = branchMeta.get(name) || {}
+      let label = name === 'main' ? t('cvBranchMain') : name
+      if (meta.available === false) label += ' · ' + t('cvBranchUnavailable')
+      else if (Number.isFinite(Number(meta.nodeCount))) label += ' · ' + Number(meta.nodeCount) + ' ' + t('nodes')
+      if (!devMode && name !== 'main') label += ' 🔒'
+      return label
+    }
+    const branchSelect = h(
+      'div',
+      { className: 'vcg-repo-branch-select' },
+      h('span', { className: 'vcg-repo-source-label' }, t('cvBranch')),
+      h(Select, {
+        value: branch,
+        options: branchOptions.map((name) => ({ value: name, label: branchLabel(name) })),
+        disabled: !devMode || branchBusy,
+        onChange: changeBranch,
+      }),
+      branchBusy ? h(Spinner, { size: 12 }) : null,
+      !devMode
+        ? h('span', { className: 'vcg-repo-branch-lock', title: t('cvDevModeOnlyMain') }, t('cvBranchLocked'))
+        : branch !== 'main'
+          ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvUnreviewed'))
+          : null,
     )
 
     const addressRows = h(
@@ -10200,7 +11483,7 @@ window.__ModuleLoader__.load({
     const toolbar = h(
       'div',
       { className: 'vcg-repo-toolbar' },
-      h('div', { className: 'vcg-repo-toolbar-main' }, sourceSelect, statusChips),
+      h('div', { className: 'vcg-repo-toolbar-main' }, sourceSelect, branchSelect, statusChips),
       addressRows,
     )
 
@@ -10314,6 +11597,8 @@ window.__ModuleLoader__.load({
             node: node,
             installed: isInstalled(node),
             blocked: isBlocked(node) && !isInstalled(node),
+            devLocked: isDevLocked(node) && !isInstalled(node),
+            unreviewed: isUnreviewedNode(node),
             importable: isImportable(node),
             selected: Boolean(selected[str(node.id)]),
             locked: bulkBusy,
@@ -10386,6 +11671,34 @@ window.__ModuleLoader__.load({
         ),
       )
     }
+    if (branch !== 'main') {
+      banners.push(
+        h(
+          Banner,
+          {
+            key: 'branch-warn',
+            kind: 'warn',
+            title: t('cvBranchUnreviewed'),
+            action: !devMode ? h(Button, { size: 'sm', onClick: openSettings }, t('repoOpenSettings')) : null,
+          },
+          t('cvBranchUnreviewedDesc', { branch: branch }),
+        ),
+      )
+    }
+    if (branchError) {
+      banners.push(
+        h(
+          Banner,
+          {
+            key: 'branch-error',
+            kind: 'error',
+            title: t('cvBranchFailed'),
+            action: h(Button, { size: 'sm', onClick: () => setBranchError('') }, t('close')),
+          },
+          branchError,
+        ),
+      )
+    }
     if (repoError && repoData) {
       banners.push(
         h(
@@ -10430,9 +11743,11 @@ window.__ModuleLoader__.load({
             { className: 'vcg-repo-modal-hint' },
             detailInstalled
               ? t('repoInstalledHint')
-              : detailBlocked
-                ? t('repoProHint')
-                : detailImportable
+              : detailDevLocked
+                ? t('cvUnreviewedNodeHint')
+                : detailBlocked
+                  ? t('repoProHint')
+                  : detailImportable
                   ? ''
                   : t('repoCannotImport'),
           ),
@@ -10509,6 +11824,8 @@ window.__ModuleLoader__.load({
               node: detailNode,
               installed: detailInstalled,
               blocked: detailBlocked,
+              devLocked: detailDevLocked,
+              unreviewed: detailUnreviewed,
               importable: detailImportable,
               installing: installingId === str(detailNode.id),
               error: installError,
@@ -10536,6 +11853,9 @@ window.__ModuleLoader__.load({
 .vcg-repo-source-select{display:flex;align-items:center;gap:7px;flex:none}
 .vcg-repo-source-label{font-size:12px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
 .vcg-repo-source-select .vcg-select{width:180px;padding:4px 8px;font-size:12px}
+.vcg-repo-branch-select{display:flex;align-items:center;gap:7px;flex:none;min-width:0}
+.vcg-repo-branch-select .vcg-select{width:190px;padding:4px 8px;font-size:12px}
+.vcg-repo-branch-lock{font-size:10.5px;color:var(--dsw-alias-label-secondary);opacity:.9;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vcg-repo-status{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .vcg-repo-addresses{display:flex;align-items:center;gap:6px 16px;flex-wrap:wrap;flex:1 1 420px;justify-content:flex-end;min-width:0}
 .vcg-repo-address{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%}
@@ -10820,6 +12140,7 @@ window.__ModuleLoader__.load({
         video: entry.video == null ? null : entry.video,
         error: typeof entry.error === 'string' ? entry.error : '',
         ms: Number(entry.ms) || 0,
+        ...(entry.usage && typeof entry.usage === 'object' ? { usage: entry.usage } : {}),
         ...(entry.skipped ? { skipped: true } : {}),
       }
     }
@@ -10836,6 +12157,9 @@ window.__ModuleLoader__.load({
     const sessionId = props && props.sessionId
     const store = V.useStore()
     const state = store.state
+    /* §16.2 仓库分支 / 开发者模式（宿主未提供时安全回退 main / false）。 */
+    const repoBranch = typeof V.readRepoBranch === 'function' ? V.readRepoBranch(state) : 'main'
+    const devMode = typeof V.readDevMode === 'function' ? V.readDevMode(state) : Boolean(state && state.devMode)
     const [nodeDefs, setNodeDefs] = React.useState([])
     const [workflow, setWorkflow] = React.useState(null)
     const [results, setResults] = React.useState({})
@@ -11106,6 +12430,8 @@ window.__ModuleLoader__.load({
           store.state && store.state.defaults && store.state.defaults.imageModel
             ? h(Badge, null, store.state.defaults.imageModel)
             : null,
+          devMode ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, V.t('cvDevModeBadge')) : null,
+          repoBranch !== 'main' ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, V.t('cvBranchShort') + '：' + repoBranch) : null,
           h('span', { style: { flex: 1 } }),
           saving ? h('span', { className: 'vcg-subtitle' }, '保存中…') : lastSaved ? h('span', { className: 'vcg-subtitle' }, '已保存 ' + V.formatTime(lastSaved)) : null,
           h(
@@ -11116,6 +12442,17 @@ window.__ModuleLoader__.load({
           h(Button, { size: 'sm', variant: 'ghost', icon: 'back', onClick: openChat }, '切换到对话'),
         ),
       ),
+      repoBranch !== 'main'
+        ? h(
+            'div',
+            { style: { padding: '0 12px 6px' } },
+            h(
+              Banner,
+              { kind: 'warn', title: V.t('cvBranchUnreviewed') },
+              V.t('cvBranchUnreviewedDesc', { branch: repoBranch }),
+            ),
+          )
+        : null,
       runError ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'error', title: '运行失败', action: h(IconButton, { label: '关闭', onClick: () => setRunError('') }, h(Glyph, { name: 'close', size: 14 })) }, runError)) : null,
       notice ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'info' }, notice)) : null,
       debugError ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'error', title: 'Debug 运行失败' }, debugError)) : null,

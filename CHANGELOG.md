@@ -1,5 +1,22 @@
 # 变更记录
 
+## v1.3.0 — 2026-11-13
+
+### 新增
+
+- **仓库上传自动审计与分支治理（DSH_VCG_repo）**：所有上传只能走 Pull Request，PR 模板声明 `type: node|workflow`、`files`、`submitter`；CI 自动审计文件类型/路径、节点/工作流规范、跨分支重复（id/文件名/内容 sha256）、模型声明来源安全；审计/人工审查不通过复制到 `bug` 分支（PR 保持打开），未审核内容进入 `dev`，issue 报告引用内容移入 `recheck`；人工审核通过才并入 `main`。重新提交需 `supersedes: #旧PR` 并校验同作者。每天北京时间 22:00 通过 GitHub/Gitea Actions 双向镜像全部分支与 tag。
+- **可信模型源与声明**：仓库根 `trusted-sources.json` 维护权威模型站点；节点/工作流支持 `models[]` 声明（name/filename/url/sha256/size/format/license），审计对不可信源/缺 sha256/非 https 仅警告、不阻止上传。
+- **客户端开发者模式与分支可见性**：默认仅 `main`；设置页「开发者模式」危险确认后可查看 `dev/bug/recheck` 并下载，非 main 内容显示「未审核」徽标与警告；未审核分支节点在非开发者模式下禁止导入。
+- **本地工具与模型（专业模式）**：检测/一键安装 PyTorch CPU 与 safetensors；模型目录管理、按声明下载、下载前可信源比对、不可信来源风险弹窗与二次确认、size/sha256 校验。
+- **本地权重检查节点** `local-safetensors-inspect`：本地 Python 读取 `.safetensors/.ckpt/.pt` 元数据，不联网、不消耗 token；新增示例工作流 `wf-local-inspect` 与 1KB 示例权重（含 sha256/size）。
+- **Token 实时统计**：节点结果与运行记录保留 `usage`；画布工具栏下方统计条实时显示本次运行输入/输出/合计 token、节点数与耗时。
+
+### 修复 / 其他
+
+- executor 新增 `local` 类型与 `safetensorsInspect` 白名单；本地节点在云端模式可原生执行（纯本地、不产生 token）。
+- 节点仓库同步支持 `nodeRepo.branch`，非 main 来源节点带 `repoBranch/reviewState` 元数据；`nodeRepo` 每次同步拉取可信源清单缓存。
+- 状态新增 `devMode`、`nodeRepo.branch`、`local.modelsDir`、`local.autoInstall`，旧状态自动兼容（devMode=false 时强制 main）。
+
 ## v1.2.1 — 2026-11-13
 
 - **修复连线渲染/跟随**：画布自动适配后缩放比例不为 100% 时，节点与分区拖拽的 DOM 变换误用了屏幕像素增量，导致连线与节点/分区错位、拖动时不跟随（拖动量 = 屏幕增量 × 缩放）。现统一使用世界坐标增量（`dx / scale`），并在释放/取消时按最终坐标立即同步连线路径，任意缩放下三者严格一致。

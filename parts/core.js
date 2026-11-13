@@ -72,6 +72,101 @@
       copyPath: '复制路径',
       openDir: '打开目录',
       noProvider: '尚未检测到可用的生图 API，请到「设置 → VCG 视觉控制生成器」配置。',
+      /* §16 仓库分支 / 开发者模式 / 本地工具与模型 */
+      cvDevMode: '开发者模式',
+      cvDevModeHint: '允许查看并导入未审核分支（dev / bug / recheck）的节点与工作流；与专业模式相互独立。',
+      cvDevModeUnsupported: '当前宿主版本不支持开发者模式，请更新插件后再试。',
+      cvDevModeDangerTitle: '开启开发者模式？',
+      cvDevModeDangerLead: '开发者模式会允许使用未经人工审核的仓库内容。',
+      cvDevModeRisk1: '未审核节点可能包含执行任意代码或访问网络的逻辑',
+      cvDevModeRisk2: '工作流可能声明不可信的模型下载地址，下载的权重可能被篡改',
+      cvDevModeRisk3: '审计与人工审查尚未通过，内容随时可能变化',
+      cvDevModeDangerTail: '仅在你信任仓库来源（GitHub / Gitea）时开启；关闭后立即回到 main 分支。',
+      cvDevModeConfirm: '我已了解风险，开启',
+      cvDevModeOn: '开发者模式已开启',
+      cvDevModeOff: '开发者模式已关闭，已回到 main 分支',
+      cvDevModeBadge: '开发者模式',
+      cvDevModeEnabled: '已开启',
+      cvDevModeOnlyMain: '开发者模式关闭时只能使用 main 分支',
+      cvBranch: '仓库分支',
+      cvBranchShort: '分支',
+      cvBranchMain: 'main（已审核）',
+      cvBranchHint: '切换分支会重新拉取节点仓库；非 main 分支的内容未经审核。',
+      cvBranchChanged: '已切换到分支 {branch}',
+      cvBranchFailed: '切换分支失败',
+      cvBranchLocked: '开启开发者模式后才能切换到未审核分支',
+      cvBranchUnavailable: '不可用',
+      cvBranchUnreviewed: '未审核内容，可能不安全',
+      cvBranchUnreviewedDesc: '当前节点仓库分支为 {branch}：其中节点与工作流尚未通过人工审核，请仅在你信任来源时使用。',
+      cvBranchCurrent: '当前分支',
+      cvUnreviewed: '未审核',
+      cvUnreviewedFrom: '来源分支 {branch}（未审核）',
+      cvUnreviewedNodeHint: '该节点来自未审核分支，开启开发者模式后才能导入。',
+      cvLocalTools: '本地工具与模型',
+      cvLocalToolsDesc: '本地 PyTorch / safetensors 与权重模型（专业模式）。插件安装时不会自动下载大文件。',
+      cvLocalToolsProOnly: '开启专业模式后可查看本地工具与模型。',
+      cvLocalProSaveFirst: '请先保存设置以启用专业模式，保存后即可检测/安装本地工具与模型。',
+      cvLocalDetect: '检测环境',
+      cvLocalDetecting: '检测中…',
+      cvLocalInstallTorch: '安装 PyTorch',
+      cvLocalInstallSafetensors: '安装 safetensors',
+      cvLocalInstallAll: '一键安装',
+      cvLocalInstallSizes: 'CPU 版 PyTorch 约 200 MB、safetensors 约 10 MB，安装通常需要 3–10 分钟。',
+      cvLocalPython: 'Python',
+      cvLocalPip: 'pip',
+      cvLocalTorch: 'PyTorch',
+      cvLocalSafetensors: 'safetensors',
+      cvLocalCuda: 'CUDA',
+      cvLocalDisk: '磁盘剩余',
+      cvLocalModelsDir: '模型目录',
+      cvLocalInstalled: '已安装',
+      cvLocalMissing: '未安装',
+      cvLocalInstalling: '安装中',
+      cvLocalInstallingActive: '正在安装 {component}，完成后会自动刷新。',
+      cvLocalProgress: '安装进度',
+      cvLocalLog: '安装日志',
+      cvLocalNotDetected: '尚未检测，请点击「检测环境」。',
+      cvLocalDetectFailed: '检测失败',
+      cvLocalInstallFailed: '安装失败',
+      cvLocalInstallStarted: '已开始安装 {component}。',
+      cvLocalStatusUnknown: '未知',
+      cvModels: '模型下载',
+      cvModelsDesc: '下载到本地模型目录的权重文件；未下载的模型可在节点参数中直接下载。',
+      cvModelsRefresh: '刷新列表',
+      cvModelsEmpty: '暂无已下载模型。',
+      cvModelsName: '名称',
+      cvModelsSize: '大小',
+      cvModelsFormat: '格式',
+      cvModelsUpdated: '更新时间',
+      cvModelsDownload: '下载模型',
+      cvModelsUrl: '模型 URL',
+      cvModelsUrlPh: 'https://huggingface.co/.../model.safetensors',
+      cvModelsFilename: '文件名',
+      cvModelsFilenamePh: 'model.safetensors',
+      cvModelsSha: 'sha256（可选）',
+      cvModelsSizeBytes: '大小（字节，可选）',
+      cvModelsFormatField: '格式',
+      cvModelsTrustTitle: '来源检查',
+      cvModelsTrusted: '可信来源',
+      cvModelsUntrusted: '不可信来源',
+      cvModelsUntrustedWarn: '下载地址 {host} 不在可信模型源清单中：文件可能被篡改或包含恶意内容。',
+      cvModelsRisks: '继续下载前请确认来源可信，并在下载后核对 sha256。',
+      cvModelsContinue: '我已确认风险，继续下载',
+      cvModelsDownloading: '下载中…',
+      cvModelsDownloadOk: '模型下载完成',
+      cvModelsDownloadFailed: '模型下载失败',
+      cvModelsNeedUrl: '请填写有效的 https 模型 URL。',
+      cvModelsNeedFilename: '请填写文件名。',
+      cvModelsDeclared: '节点声明模型',
+      cvModelsDownloaded: '已下载',
+      cvModelsNotDownloaded: '未下载模型',
+      cvModelsPick: '选择已下载模型',
+      cvModelsSettingsHint: '没有可用模型？到「设置 → 本地工具与模型」下载。',
+      cvModelsHost: '来源主机',
+      cvModelsLicense: '许可',
+      cvModelsTrustCheck: '检查来源',
+      cvModelsNoDeclared: '该节点未声明模型。',
+      cvModelsDialogTitle: '下载模型',
     },
     en: {
       appName: 'VCG Visual Control Generator',
@@ -132,6 +227,101 @@
       copyPath: 'Copy path',
       openDir: 'Open folder',
       noProvider: 'No image API detected yet. Configure one in Settings → VCG Visual Control Generator.',
+      /* §16 repo branch / developer mode / local tools & models */
+      cvDevMode: 'Developer mode',
+      cvDevModeHint: 'Allows browsing and importing nodes/workflows from unreviewed branches (dev / bug / recheck). Independent from pro mode.',
+      cvDevModeUnsupported: 'This host version does not support developer mode; update the plugin and retry.',
+      cvDevModeDangerTitle: 'Enable developer mode?',
+      cvDevModeDangerLead: 'Developer mode allows content that has not passed human review.',
+      cvDevModeRisk1: 'Unreviewed nodes may contain logic that runs arbitrary code or accesses the network',
+      cvDevModeRisk2: 'Workflows may declare untrusted model download URLs whose weights could be tampered with',
+      cvDevModeRisk3: 'Audit and human review have not passed; content can change at any time',
+      cvDevModeDangerTail: 'Only enable this if you trust the repository source (GitHub / Gitea). Disabling returns to the main branch immediately.',
+      cvDevModeConfirm: 'I understand the risks, enable',
+      cvDevModeOn: 'Developer mode enabled',
+      cvDevModeOff: 'Developer mode disabled, back on the main branch',
+      cvDevModeBadge: 'Developer mode',
+      cvDevModeEnabled: 'On',
+      cvDevModeOnlyMain: 'Only the main branch is available while developer mode is off',
+      cvBranch: 'Repository branch',
+      cvBranchShort: 'Branch',
+      cvBranchMain: 'main (reviewed)',
+      cvBranchHint: 'Switching branches re-fetches the node repository; non-main branches are not reviewed.',
+      cvBranchChanged: 'Switched to branch {branch}',
+      cvBranchFailed: 'Branch switch failed',
+      cvBranchLocked: 'Enable developer mode before switching to an unreviewed branch',
+      cvBranchUnavailable: 'unavailable',
+      cvBranchUnreviewed: 'Unreviewed content, may be unsafe',
+      cvBranchUnreviewedDesc: 'The node repository is on branch {branch}: its nodes and workflows have not passed human review. Only use them if you trust the source.',
+      cvBranchCurrent: 'Current branch',
+      cvUnreviewed: 'Unreviewed',
+      cvUnreviewedFrom: 'Source branch {branch} (unreviewed)',
+      cvUnreviewedNodeHint: 'This node comes from an unreviewed branch; enable developer mode to import it.',
+      cvLocalTools: 'Local tools & models',
+      cvLocalToolsDesc: 'Local PyTorch / safetensors and weight models (pro mode). The plugin never downloads large files during install.',
+      cvLocalToolsProOnly: 'Enable pro mode to view local tools and models.',
+      cvLocalProSaveFirst: 'Save settings to enable pro mode first; local tools and models become available right after.',
+      cvLocalDetect: 'Detect environment',
+      cvLocalDetecting: 'Detecting…',
+      cvLocalInstallTorch: 'Install PyTorch',
+      cvLocalInstallSafetensors: 'Install safetensors',
+      cvLocalInstallAll: 'Install both',
+      cvLocalInstallSizes: 'CPU PyTorch is ~200 MB and safetensors ~10 MB; installation usually takes 3–10 minutes.',
+      cvLocalPython: 'Python',
+      cvLocalPip: 'pip',
+      cvLocalTorch: 'PyTorch',
+      cvLocalSafetensors: 'safetensors',
+      cvLocalCuda: 'CUDA',
+      cvLocalDisk: 'Disk free',
+      cvLocalModelsDir: 'Models folder',
+      cvLocalInstalled: 'Installed',
+      cvLocalMissing: 'Not installed',
+      cvLocalInstalling: 'Installing',
+      cvLocalInstallingActive: 'Installing {component}; the status refreshes automatically.',
+      cvLocalProgress: 'Install progress',
+      cvLocalLog: 'Install log',
+      cvLocalNotDetected: 'Not detected yet — click "Detect environment".',
+      cvLocalDetectFailed: 'Detection failed',
+      cvLocalInstallFailed: 'Installation failed',
+      cvLocalInstallStarted: 'Started installing {component}.',
+      cvLocalStatusUnknown: 'Unknown',
+      cvModels: 'Model downloads',
+      cvModelsDesc: 'Weights downloaded into the local models folder; declared models can also be downloaded from node parameters.',
+      cvModelsRefresh: 'Refresh list',
+      cvModelsEmpty: 'No models downloaded yet.',
+      cvModelsName: 'Name',
+      cvModelsSize: 'Size',
+      cvModelsFormat: 'Format',
+      cvModelsUpdated: 'Updated',
+      cvModelsDownload: 'Download model',
+      cvModelsUrl: 'Model URL',
+      cvModelsUrlPh: 'https://huggingface.co/.../model.safetensors',
+      cvModelsFilename: 'File name',
+      cvModelsFilenamePh: 'model.safetensors',
+      cvModelsSha: 'sha256 (optional)',
+      cvModelsSizeBytes: 'Size in bytes (optional)',
+      cvModelsFormatField: 'Format',
+      cvModelsTrustTitle: 'Source check',
+      cvModelsTrusted: 'Trusted source',
+      cvModelsUntrusted: 'Untrusted source',
+      cvModelsUntrustedWarn: '{host} is not in the trusted model source list: the file may be tampered with or malicious.',
+      cvModelsRisks: 'Only continue if you trust the source, and verify sha256 after downloading.',
+      cvModelsContinue: 'I understand the risk, download anyway',
+      cvModelsDownloading: 'Downloading…',
+      cvModelsDownloadOk: 'Model downloaded',
+      cvModelsDownloadFailed: 'Model download failed',
+      cvModelsNeedUrl: 'Enter a valid https model URL.',
+      cvModelsNeedFilename: 'Enter a file name.',
+      cvModelsDeclared: 'Declared models',
+      cvModelsDownloaded: 'Downloaded',
+      cvModelsNotDownloaded: 'No model downloaded',
+      cvModelsPick: 'Pick a downloaded model',
+      cvModelsSettingsHint: 'No models available? Download them in Settings → Local tools & models.',
+      cvModelsHost: 'Source host',
+      cvModelsLicense: 'License',
+      cvModelsTrustCheck: 'Check source',
+      cvModelsNoDeclared: 'This node declares no models.',
+      cvModelsDialogTitle: 'Download model',
     },
   }
 
@@ -324,6 +514,31 @@
     const pad = (n) => String(n).padStart(2, '0')
     return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes())
   }
+  /** Thousands-separated integer for token counters (§16.4). */
+  V.formatCount = function formatCount(value) {
+    const n = Number(value)
+    if (!Number.isFinite(n)) return '0'
+    const rounded = Math.round(n)
+    try {
+      return rounded.toLocaleString('zh-CN')
+    } catch {
+      return String(rounded)
+    }
+  }
+  /** File name of a POSIX/Windows path. */
+  V.basename = function basename(path) {
+    const text = String(path || '')
+    const parts = text.split(/[\\/]/)
+    return parts[parts.length - 1] || text
+  }
+  /** Host of a URL (empty when unparsable). */
+  V.hostOf = function hostOf(url) {
+    try {
+      return new URL(String(url || '')).host || ''
+    } catch {
+      return ''
+    }
+  }
   V.debounce = function debounce(fn, delay) {
     let timer = null
     return function debounced() {
@@ -436,6 +651,26 @@
     ENGINE_LABELS: { cloud: '云端', local: '本地', both: '云端/本地' },
     ENGINE_COLORS: { cloud: '#7c5cff', local: '#f59e0b', both: '#22c55e' },
     STATUS_COLORS: { idle: '#94a3b8', running: '#38bdf8', done: '#34d399', error: '#f87171' },
+    /* §16.2 节点仓库分支：main 已审核，其余为未审核分支 */
+    REPO_BRANCHES: ['main', 'dev', 'bug', 'recheck'],
+    /* §16.5 本地模型文件格式 */
+    MODEL_FORMATS: ['safetensors', 'ckpt', 'pt', 'pth', 'bin', 'gguf'],
+  }
+  /** True when a node/workflow comes from an unreviewed repository branch (§16.2). */
+  V.isUnreviewed = function isUnreviewed(item) {
+    if (!item || typeof item !== 'object') return false
+    const branch = item.repoBranch || item.branch
+    if (typeof branch === 'string' && branch.trim() !== '' && branch.trim() !== 'main') return true
+    return item.reviewState === 'unreviewed'
+  }
+  /** Read `devMode` / `nodeRepo.branch` defensively (host may lag a version). */
+  V.readDevMode = function readDevMode(state) {
+    return Boolean(state && state.devMode)
+  }
+  V.readRepoBranch = function readRepoBranch(state) {
+    const nodeRepo = state && state.nodeRepo && typeof state.nodeRepo === 'object' ? state.nodeRepo : {}
+    const branch = typeof nodeRepo.branch === 'string' ? nodeRepo.branch.trim() : ''
+    return branch || 'main'
   }
   V.portColor = (type) => PORT_COLORS[type] || PORT_COLORS.any
   V.categoryLabel = (id) => {
@@ -519,7 +754,14 @@
 .vcg-debug-group-title{font-size:12px;font-weight:600;color:var(--dsw-alias-label-secondary)}
 .vcg-debug-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .vcg-debug-item{display:flex;align-items:flex-start;gap:7px;padding:5px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:var(--dsw-alias-bg-layer-1);font-size:12px;line-height:1.45}
+.vcg-model-modal{display:flex;flex-direction:column;gap:10px;min-width:0}
+.vcg-model-kv{display:grid;grid-template-columns:104px minmax(0,1fr);gap:5px 10px;font-size:12px;align-items:start}
+.vcg-model-kv-label{color:var(--dsw-alias-label-secondary)}
+.vcg-model-kv-value{min-width:0;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+.vcg-model-trust{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vcg-model-risk{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--dsw-alias-label-primary)}
 `
+
 
   function StyleTag() {
     return h('style', { 'data-vcg': 'core', dangerouslySetInnerHTML: { __html: CSS } })
@@ -940,6 +1182,176 @@
     )
   }
 
+  /* ------------------------------------------- §16.5 model download modal */
+
+  /**
+   * 不可信模型源二次确认 + 下载弹窗（§16.5）。
+   * props: { open, declaration, onClose, onDone }
+   * declaration: { url, filename, sha256, size, format, name, license }
+   */
+  function ModelDownloadModal(props) {
+    const { open, declaration } = props
+    const [trust, setTrust] = React.useState(null)
+    const [checking, setChecking] = React.useState(false)
+    const [busy, setBusy] = React.useState(false)
+    const [error, setError] = React.useState('')
+    const [done, setDone] = React.useState(false)
+    /* §16.5 下载进度：宿主没有独立进度 RPC，复用 toolsStatus.download。 */
+    const [progress, setProgress] = React.useState(null)
+    const url = declaration ? String(declaration.url || '') : ''
+    const decl = declaration || {}
+    const filename = String(decl.filename || basenameOf(decl.url) || '')
+    const host = (trust && trust.host) || hostOfUrl(url)
+
+    React.useEffect(() => {
+      if (!open || !url) return undefined
+      let alive = true
+      setTrust(null)
+      setChecking(true)
+      setError('')
+      setDone(false)
+      setBusy(false)
+      V.rpc('modelsTrust', { url: url })
+        .then((value) => {
+          if (!alive) return
+          setTrust(value && typeof value === 'object' ? value : {})
+          setChecking(false)
+        })
+        .catch(() => {
+          if (!alive) return
+          // 宿主暂不支持时按「不可信」处理，仍允许确认后下载。
+          setTrust({ trusted: false, host: hostOfUrl(url), unavailable: true })
+          setChecking(false)
+        })
+      return () => {
+        alive = false
+      }
+    }, [open, url])
+
+    React.useEffect(() => {
+      if (!busy) return undefined
+      let alive = true
+      const tick = () => {
+        V.rpc('toolsStatus')
+          .then((value) => {
+            if (!alive) return
+            const download = value && value.download && typeof value.download === 'object' ? value.download : null
+            setProgress(download)
+          })
+          .catch(() => {})
+      }
+      tick()
+      const timer = setInterval(tick, 1500)
+      return () => {
+        alive = false
+        clearInterval(timer)
+      }
+    }, [busy])
+
+    if (!open) return null
+
+    const trusted = Boolean(trust && trust.trusted === true)
+
+    async function download() {
+      if (busy) return
+      setBusy(true)
+      setError('')
+      try {
+        const args = { url: url, confirmUntrusted: !trusted }
+        if (filename) args.filename = filename
+        if (decl.sha256) args.sha256 = decl.sha256
+        if (decl.size !== undefined && decl.size !== null && decl.size !== '') args.size = decl.size
+        if (decl.format) args.format = decl.format
+        await V.rpc('modelsDownload', args)
+        setDone(true)
+        if (typeof props.onDone === 'function') props.onDone(Object.assign({ filename: filename }, decl))
+      } catch (err) {
+        setError(vcgMessage(err))
+      } finally {
+        setBusy(false)
+      }
+    }
+
+    const kv = [
+      decl.name ? h('div', { key: 'name', className: 'vcg-model-kv-label' }, t('cvModelsName')) : null,
+      decl.name ? h('div', { key: 'name-v', className: 'vcg-model-kv-value' }, String(decl.name)) : null,
+      h('div', { key: 'host', className: 'vcg-model-kv-label' }, t('cvModelsHost')),
+      h('div', { key: 'host-v', className: 'vcg-model-kv-value' }, host || '—'),
+      h('div', { key: 'file', className: 'vcg-model-kv-label' }, t('cvModelsFilename')),
+      h('div', { key: 'file-v', className: 'vcg-model-kv-value' }, filename || '—'),
+      decl.size !== undefined && decl.size !== null && decl.size !== ''
+        ? h('div', { key: 'size', className: 'vcg-model-kv-label' }, t('cvModelsSize'))
+        : null,
+      decl.size !== undefined && decl.size !== null && decl.size !== ''
+        ? h('div', { key: 'size-v', className: 'vcg-model-kv-value' }, V.formatBytes(decl.size))
+        : null,
+      decl.format ? h('div', { key: 'format', className: 'vcg-model-kv-label' }, t('cvModelsFormat')) : null,
+      decl.format ? h('div', { key: 'format-v', className: 'vcg-model-kv-value' }, String(decl.format)) : null,
+      decl.sha256 ? h('div', { key: 'sha', className: 'vcg-model-kv-label' }, 'sha256') : null,
+      decl.sha256 ? h('div', { key: 'sha-v', className: 'vcg-model-kv-value' }, String(decl.sha256)) : null,
+      decl.license ? h('div', { key: 'lic', className: 'vcg-model-kv-label' }, t('cvModelsLicense')) : null,
+      decl.license ? h('div', { key: 'lic-v', className: 'vcg-model-kv-value' }, String(decl.license)) : null,
+    ].filter(Boolean)
+
+    const body = h(
+      'div',
+      { className: 'vcg-model-modal' },
+      h('div', { className: 'vcg-model-kv' }, kv),
+      h(
+        'div',
+        { className: 'vcg-model-trust' },
+        checking
+          ? h('span', { className: 'vcg-row' }, h(Spinner, { size: 12 }), t('cvModelsTrustCheck') + '…')
+          : trusted
+            ? h(Badge, { color: 'var(--dsw-alias-state-success-primary)' }, t('cvModelsTrusted'))
+            : h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, t('cvModelsUntrusted')),
+      ),
+      !checking && !trusted
+        ? h(
+            Banner,
+            { kind: 'warn', title: t('cvModelsUntrustedWarn', { host: host || '—' }) },
+            h('ul', { className: 'vcg-model-risk' }, h('li', null, t('cvModelsRisks')), h('li', null, t('cvDevModeRisk2'))),
+          )
+        : null,
+      busy && progress
+        ? h(
+            'div',
+            { className: 'vcg-hint' },
+            t('cvModelsDownloading') +
+              ' · ' +
+              String(Number(progress.progress) || 0) +
+              '%' +
+              (Number(progress.total) > 0
+                ? ' · ' + V.formatBytes(Number(progress.received) || 0) + ' / ' + V.formatBytes(Number(progress.total))
+                : ''),
+          )
+        : null,
+      error ? h(Banner, { kind: 'error', title: t('cvModelsDownloadFailed') }, error) : null,
+      done ? h(Banner, { kind: 'success', title: t('cvModelsDownloadOk') }, filename) : null,
+    )
+
+    const footer = h(
+      'div',
+      { className: 'vcg-row', style: { marginLeft: 'auto' } },
+      h(Button, { onClick: props.onClose, disabled: busy }, done ? t('close') : t('cancel')),
+      done
+        ? null
+        : h(
+            Button,
+            { variant: 'primary', onClick: download, disabled: busy || checking || !url },
+            busy ? h('span', { className: 'vcg-row' }, h(Spinner, { size: 12 }), t('cvModelsDownloading')) : trusted ? t('cvModelsDownload') : t('cvModelsContinue'),
+          ),
+    )
+
+    return h(
+      Modal,
+      { open: true, title: t('cvModelsDialogTitle'), onClose: busy ? undefined : props.onClose, width: 'min(620px,100%)', footer: footer },
+      body,
+    )
+  }
+  const basenameOf = (value) => V.basename(value)
+  const hostOfUrl = (value) => V.hostOf(value)
+
   /* ------------------------------------------------------- async data hook */
 
   /**
@@ -984,6 +1396,7 @@
 
   /* ------------------------------------------------------------- ui export */
 
+  V.ModelDownloadModal = ModelDownloadModal
   V.ui = {
     Button,
     IconButton,

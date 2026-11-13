@@ -4,7 +4,7 @@
 
 - 节点与工作流仓库：[DSH_VCG_repo](https://github.com/Zymjason/DSH_VCG_repo)　|　镜像：https://gitea.com/ZymJason_DSH/DSH_VCG_repo
 - 插件本仓库同时发布在：GitHub `Zymjason/DSH_VCG`　|　Gitea `ZymJason_DSH/DSH_VCG`
-- 版本与变更记录：[CHANGELOG.md](CHANGELOG.md)（当前 v1.2.1）
+- 版本与变更记录：[CHANGELOG.md](CHANGELOG.md)（当前 v1.3.0）
 
 ---
 
@@ -22,12 +22,16 @@
 | 实时运行状态 | 运行中每 500ms 读取 Host 运行记录：节点实时显示等待中 / 运行中 / 已完成（耗时）/ 失败，完成结果即时出现，工具栏显示进度与当前节点 |
 | 拖线即建节点 | 从端口拖线在空白画布松开 → 呼出「添加节点并连接」菜单，按端口类型过滤兼容节点，自动创建节点并连线 |
 | 画布分区（Zone） | 一键框选/创建半透明分区，可命名（标题栏铅笔按钮或双击）、改色、拖拽与缩放；拖动节点进入分区会高亮提示、松开即加入分区，拖动分区标题栏会带着分区内节点一起移动；分区随工作流 JSON 保存 |
-| 节点工作流仓库侧边栏 | 左侧栏新增「VCG 节点工作流仓库」页：按分类/搜索浏览 DSH_VCG_repo 的节点与工作流，卡片式勾选、批量导入；仓库地址仍在设置中配置 |
+| 节点工作流仓库侧边栏 | 左侧栏新增「VCG 节点工作流仓库」页：按分类/搜索浏览 DSH_VCG_repo 的节点与工作流，卡片式勾选、批量导入；默认只显示人工审核通过的 `main`，开启开发者模式后可查看 `dev/bug/recheck` 未审核分支（危险确认 + 「未审核」徽标）；仓库地址仍在设置中配置 |
 | 云端生成 | 自动检测全局 API（Alibaba Token Plan / `wan2.7-image`、`qwen-image-3.0-pro`、`qwen3.8-max` 等），也支持自定义 provider（bailian-chat-image / openai-images / openai-video / custom-http） |
 | 界面主次 | 画布占满可用空间：节点库默认收起、低频控制收进画布工具栏「更多」、运行/Debug 按钮放大、AI 建流收进弹窗、页面头部压缩为单行 |
 | API 全量检测 | 「自动检测」除宿主 LLM 配置外，还会读取每个 provider 的 `GET {baseUrl}/models` 全量模型（含 `audio` 等非生成类，写入 `models.all` / `models.audio`），不再局限于配置子集 |
 | 本地运算（可选） | 设置中开启后，工作流翻译为 ComfyUI API prompt 提交本地 `/prompt` 并轮询 `/history`，取回 `/view` 图片 |
-| 专业模式 | 设置页开关，开启后才允许导入声明式 HTTP 自定义节点（`executor.kind="http"`） |
+| 专业模式 | 设置页开关，开启后才允许导入声明式 HTTP 自定义节点（`executor.kind="http"`）与本地工具 |
+| 本地工具与模型 | 专业模式下可检测/一键安装本地 PyTorch（CPU 版）与 safetensors；模型目录管理、按节点/工作流 `models[]` 声明下载、下载前比对仓库可信源 `trusted-sources.json`，不可信源弹窗警告并二次确认 |
+| 本地权重检查节点 | 内置 `local-safetensors-inspect`：用本地 Python 读取 `.safetensors/.ckpt/.pt` 张量元数据，不联网、不消耗 token；未装工具时给出安装指引 |
+| Token 实时统计 | 画布工具栏下方统计条实时汇总本次运行的输入/输出/合计 token、节点数/耗时；随运行轮询更新 |
+| 仓库自动审计与分支治理 | DSH_VCG_repo 所有上传只能走 PR，自动审计类型声明/文件规范/重复提交/模型来源安全；未审核进 `dev`、打回进 `bug`、issue 复核进 `recheck`，人工审核通过才并入 `main`；每天 22:00（北京）双向镜像全部分支 |
 | 输出管理 | 每次生成落到「工作区（或项目目录）/ vcg-output」，输出画廊可预览、复制路径 |
 | Agent 工具 | 向模型暴露 `vcg` 工具：AI 可自行建流、跑流、Debug 校验（`debug_workflow`）、浏览/导入节点仓库（`list_repo_nodes` / `install_repo_node`）、看状态、同步节点仓库 |
 
@@ -142,6 +146,31 @@
 - 节点按分类 + 搜索过滤，卡片展示名称/引擎/能力/参数，点击卡片打开详情（端口、参数、ComfyUI 映射、执行器说明）；
 - 勾选未安装的节点后批量「导入」，或对单个节点「导入」；已安装节点显示「已安装」徽标；需要专业模式的 HTTP 节点会提示先开启专业模式；
 - 「仓库工作流」区展示仓库内置工作流与安装状态，「已安装自定义节点」区列出可删除的导入节点（仓库/内置节点受保护，不可在此删除）。
+
+## 仓库分支与开发者模式
+
+- 客户端默认只读取人工审核通过的 `main` 分支；节点库/仓库页对非 main 来源显示「未审核」徽标。
+- 设置 → VCG → **开发者模式**：开启前弹出危险确认（未审核节点/工作流可能包含恶意代码或不可信模型下载），确认后可切换 `dev`（未审核）、`bug`（打回）、`recheck`（issue 复核）分支查看与下载；关闭立即回 `main`。
+- 开发版仅用于参与仓库审核流程；普通使用请保持关闭。
+
+## 仓库上传与审计（DSH_VCG_repo）
+
+- 所有上传只能通过 Pull Request，PR 模板必须声明 `type: node|workflow`、`files`、`submitter`，重新提交需 `supersedes: #旧PR`。
+- CI 自动审计：文件类型/路径、节点或工作流规范、跨分支重复（id/文件名/内容 sha256，重复即打回）、模型声明安全（不可信源/缺 sha256/非 https 仅警告）。
+- 未审核内容进入 `dev`；审计/人工审查不通过复制到 `bug`（PR 保持打开）；issue 中报告的问题节点/工作流移入 `recheck` 复核。人工审核通过后才并入 `main`。
+- 每天北京时间 22:00 自动同步 GitHub 与 Gitea 的全部分支与 tag。流程、标签与权限配置见仓库 [docs/review-policy.md](https://github.com/Zymjason/DSH_VCG_repo/blob/main/docs/review-policy.md)。
+
+## 本地工具与模型（专业模式）
+
+- 打开「专业模式」后，设置页出现「本地工具与模型」：检测 `python3/pip/torch/safetensors/CUDA`、显示磁盘余量，并可一键安装 PyTorch CPU 版（约 200MB）与 safetensors。
+- 模型目录默认 `~/.dsh/dsh-vcg/models`，支持 `.safetensors/.ckpt/.pt/.pth/.bin`。
+- 节点/工作流可通过 `models[]` 声明推荐权重（名称、文件名、URL、大小、sha256、许可证）。下载前比对仓库可信源清单；非权威来源会弹窗列出风险并要求二次确认。
+- 节点参数类型 `model` 会渲染为已下载模型下拉；可在参数内直接下载声明中的权重。
+- 本地权重检查示例：同步节点仓库后使用「本地权重检查器」节点，或直接打开示例工作流「本地权重检查示例」。
+
+## Token 统计
+
+画布工具栏与画布之间新增 token 统计条：运行中实时汇总本次运行的输入/输出/合计 token 与节点数/耗时；模型未返回用量时显示「本次运行未返回用量」。
 
 ## 拖动连线呼出节点菜单
 

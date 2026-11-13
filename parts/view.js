@@ -164,6 +164,7 @@
         video: entry.video == null ? null : entry.video,
         error: typeof entry.error === 'string' ? entry.error : '',
         ms: Number(entry.ms) || 0,
+        ...(entry.usage && typeof entry.usage === 'object' ? { usage: entry.usage } : {}),
         ...(entry.skipped ? { skipped: true } : {}),
       }
     }
@@ -180,6 +181,9 @@
     const sessionId = props && props.sessionId
     const store = V.useStore()
     const state = store.state
+    /* §16.2 仓库分支 / 开发者模式（宿主未提供时安全回退 main / false）。 */
+    const repoBranch = typeof V.readRepoBranch === 'function' ? V.readRepoBranch(state) : 'main'
+    const devMode = typeof V.readDevMode === 'function' ? V.readDevMode(state) : Boolean(state && state.devMode)
     const [nodeDefs, setNodeDefs] = React.useState([])
     const [workflow, setWorkflow] = React.useState(null)
     const [results, setResults] = React.useState({})
@@ -450,6 +454,8 @@
           store.state && store.state.defaults && store.state.defaults.imageModel
             ? h(Badge, null, store.state.defaults.imageModel)
             : null,
+          devMode ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, V.t('cvDevModeBadge')) : null,
+          repoBranch !== 'main' ? h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, V.t('cvBranchShort') + '：' + repoBranch) : null,
           h('span', { style: { flex: 1 } }),
           saving ? h('span', { className: 'vcg-subtitle' }, '保存中…') : lastSaved ? h('span', { className: 'vcg-subtitle' }, '已保存 ' + V.formatTime(lastSaved)) : null,
           h(
@@ -460,6 +466,17 @@
           h(Button, { size: 'sm', variant: 'ghost', icon: 'back', onClick: openChat }, '切换到对话'),
         ),
       ),
+      repoBranch !== 'main'
+        ? h(
+            'div',
+            { style: { padding: '0 12px 6px' } },
+            h(
+              Banner,
+              { kind: 'warn', title: V.t('cvBranchUnreviewed') },
+              V.t('cvBranchUnreviewedDesc', { branch: repoBranch }),
+            ),
+          )
+        : null,
       runError ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'error', title: '运行失败', action: h(IconButton, { label: '关闭', onClick: () => setRunError('') }, h(Glyph, { name: 'close', size: 14 })) }, runError)) : null,
       notice ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'info' }, notice)) : null,
       debugError ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'error', title: 'Debug 运行失败' }, debugError)) : null,

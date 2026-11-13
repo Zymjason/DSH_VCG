@@ -466,3 +466,73 @@ sdk/loader.md                 如何从本仓库拉取节点包（raw URL / mani
   - 删除节点：同一次 `emitWorkflow` 中从所有 `zones[].nodes` 移除该 id。
   - 分区标题栏显示成员数徽标（如「3 节点」，`cvZoneMembers` i18n）；`readOnly` 下不显示改名/删除等写操作按钮。
   - 读取旧工作流：`zone.nodes` 缺失时回退「中心在分区内」判定；一旦节点被拖动/分区创建等操作写回，相关分区写入显式 `nodes`。
+
+## 16. 第六轮迭代：仓库自动审计与分支治理 / 本地工具 / Token 统计
+
+### 16.1 DSH_VCG_repo 分支模型与上传审计
+
+分支：`main`（人工审核通过）、`dev`（已提交未审核）、`bug`（打回/审计不通过）、`recheck`（issue 触发复核）。
+
+- **所有上传只能走 Pull Request**：禁止直接 push `main`；PR 目标分支 `dev`，由人工在 `dev` 上审查后合并 `main`。
+- PR 正文必须声明：`type: node|workflow`、`files:`（文件路径，必须与声明类型匹配：node 只能改 1 个 `nodes/*.json`；workflow 只能改 1 个 `workflows/*.json`）、`submitter:`、可选 `supersedes: #N`（重新提交时引用旧 PR）。
+- CI（GitHub Actions + Gitea Actions 各一份）：解析 PR 声明 → `scripts/audit-submission.mjs` 做结构与规范审计、跨分支重复检测（id / 文件名 / 内容 sha256）、模型声明安全检查（不可信源/缺 sha256 仅 warning）→ 通过打 `audit:passed` 并评论报告；不通过打 `audit:failed`、评论错误、把文件复制到 `bug` 分支，**PR 保持打开**。
+- 人工审查使用标签：`status:approved` → 自动把 `dev` 中该次提交合并到 `main`；`status:rejected` → 复制到 `bug` 分支 + 打标签 + 评论（不自动关闭 PR）。
+- **重新提交**：新 PR 含 `supersedes: #N`；CI 校验 `#N` 作者与新 PR 作者相同、`#N` 未合并；通过后在旧 PR 评论并关闭旧 PR，新 PR 重新走审计。
+- Issue 审计：issue 模板包含被引用节点/工作流；`audit-issue.yml` 自动审计引用内容、复制到 `recheck` 分支、评论报告、打 `recheck:pending`；人工 `recheck:approved` 合并 main，`recheck:rejected` 复制 bug。
+- 仓库提供 `docs/review-policy.md`（流程/标签/权限说明）与 PR/Issue 模板。
+
+### 16.2 每日镜像同步
+
+- 每天 **22:00 Asia/Shanghai**（cron `0 14 * * *` UTC，GitHub Actions 与 Gitea Actions 各一个）同步两端**所有分支与 tag**：
+  - GitHub→Gitea：`secrets.GITEA_TOKEN`
+  - Gitea→GitHub：`secrets.GH_TOKEN`
+- `scripts/sync-mirrors.mjs`：枚举源仓库分支/tag，缺失或落后则 `push --force-with-lease`，单分支失败不阻塞其它分支并汇总报告；CI 日志输出同步摘要。
+
+### 16.3 可信模型源与模型声明
+
+- 仓库根 `trusted-sources.json`：
+```json
+{ "version": 1, "updatedAt": "ISO", "hosts": [
+  { "host": "huggingface.co", "name": "Hugging Face", "trusted": true, "note": "" },
+  { "host": "modelscope.cn", "name": "ModelScope", "trusted": true },
+  { "host": "civitai.com", "name": "Civitai", "trusted": true },
+  { "host": "github.com", "name": "GitHub Releases", "trusted": true }
+] }
+```
+- 节点/工作流 JSON 可选 `models` 数组（文件级声明）：
+```json
+"models": [{ "name": "SD 1.5", "filename": "v1-5-pruned.safetensors", "url": "https://huggingface.co/...", "sha256": "64hex", "size": 4000000000, "format": "safetensors", "source": "huggingface", "license": "creativeml-openrail-m", "required": true }]
+```
+- 审计：URL 必须 https；`filename` 不含路径分隔/`..`；`format ∈ safetensors|ckpt|pt|pth|bin|gguf`；`size` 正整数；`sha256` 为 64 位 hex；不可信 host / 缺 sha256 / 非 https 只**警告**，不阻止上传（审计报告列出）。
+- 插件 `syncNodeRepo` 同时拉取 `trusted-sources.json`，缓存到 `data/dsh-vcg/trusted-sources.json`；下载前比对。
+
+### 16.4 客户端仓库分支可见性与开发者模式
+
+- 状态新增：`nodeRepo.branch`（默认 `main`）、`devMode`（默认 `false`）。
+- `devMode=false`：只能使用 `main`；未认证第三方节点（来源非 main 分支/非内置）禁止导入；分支选择器锁定。
+- `devMode=true`：可切换 `dev/bug/recheck` 查看与下载；**开启前客户端必须弹危险确认**（未审核内容可能含不安全节点/模型下载），确认后才写入 `devMode=true` 并刷新仓库；关闭立即回 main。专业模式 `proMode` 与开发者模式 `devMode` 相互独立。
+- 非 `main` 分支来源节点在节点库/画布显示「未审核」徽标（`node.repoBranch`）。
+
+### 16.5 本地工具与模型（专业模式）
+
+- 状态 `local` 扩展：`modelsDir`（默认 `<data>/dsh-vcg/models`）、`autoInstall`（默认 false）。大工具不在插件安装时下载；打开专业模式后引导检测/安装。
+- RPC（`/api/dsh-vcg/rpc`）：
+  - `toolsStatus()` → `{ python, pip, torch, safetensors, cuda, diskFreeMB, modelsDir, installing, progress, logTail }`
+  - `toolsInstall({ component: 'torch'|'safetensors'|'all' })` → `{ started: true }`（proMode 必需；后台 pip 安装 CPU 版 torch，客户端轮询 toolsStatus 显示进度/日志尾）
+  - `modelsList()` → `{ models: [{ name, path, size, format, mtime, meta }] }`
+  - `modelsDownload({ url, filename, sha256, size, format, confirmUntrusted })` → 校验 https 与可信源；不可信且未 `confirmUntrusted:true` 抛错（错误码/消息含 `UNTRUSTED_MODEL_SOURCE` 与 host）；下载到 modelsDir，校验 size/sha256，写同名 `.json` 元数据
+  - `modelsTrust({ url })` → `{ trusted, host, registryUpdatedAt }`
+- 节点参数类型 `model`：从 `modelsList()` 选择已下载权重；未下载时提供声明中的下载入口（名称/大小/来源 + 可信状态）。
+- 打开专业模式时提示「本地工具未安装」并提供一键安装按钮；`proMode=false` 时以上 RPC 一律拒绝。
+
+### 16.6 本地 PyTorch 执行示例节点
+
+- `executor.kind` 新增 `local`，`executor.fn` 白名单：`safetensorsInspect`。
+- 仓库新增节点 `local-safetensors-inspect`（engine `local`，params: `model_file` type `model`；输出 `text`）：读取 safetensors/ckpt/pt 元数据（tensor 名/dtype/shape/数量、文件大小、是否为 safetensors），不要求 GPU；torch/safetensors 未安装时返回可读错误并提示到「设置 → 本地工具」安装。
+- 云端模式下允许执行（纯本地，不调用云端 API/不产生 token）；输出可供下游 text 节点使用。
+
+### 16.7 Token 实时统计
+
+- cloud 调用返回的 `usage`（OpenAI 兼容 `prompt_tokens/completion_tokens/total_tokens`）逐节点保留：节点结果新增 `usage`；引擎运行结果与 `runStatus` run record 新增汇总 `usage`。
+- 画布顶部（工具栏下方/画布上方）新增 token 统计条：`本次运行 Token：输入 X · 输出 Y · 合计 Z`、运行节点数/耗时；运行中随 `runStatus` 轮询实时更新；无用量时显示「本次运行未返回用量」。
+- i18n 新增：`cvTokens`、`cvTokensInput`、`cvTokensOutput`、`cvTokensTotal`、`cvTokensEmpty`、`cvDevMode*`、`cvLocalTools*`、`cvModels*` 等；UI 仅用 `--dsw-alias-*` token。
