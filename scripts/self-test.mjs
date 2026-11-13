@@ -73,6 +73,9 @@ import {
 } from '../lib/localtools.js'
 import { normalizeModelDeclarations } from '../lib/workflow.js'
 
+// Never run real pip installs from the offline self-test.
+process.env.DSH_VCG_DISABLE_AUTO_INSTALL = '1'
+
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const NODES_DIR = join(ROOT, 'nodes')
 const WORKFLOWS_DIR = join(ROOT, 'workflows')
@@ -1058,7 +1061,7 @@ ok(typesCompatible('image', 'latent') === false, '§11.2 image→latent 禁止')
   const fresh = defaultState()
   equal(fresh.devMode, false, '§16.4 devMode 默认关闭')
   equal(fresh.nodeRepo.branch, 'main', '§16.4 nodeRepo.branch 默认 main')
-  equal(fresh.local.autoInstall, false, '§16.5 本地工具默认不自动安装')
+  equal(fresh.local.autoInstall, true, '§16.5 专业模式默认自动安装本地工具')
   ok(typeof fresh.local.modelsDir === 'string' && fresh.local.modelsDir.endsWith('models'), '§16.5 本地模型目录默认 models')
   equal(normalizeRepoBranch('dev'), 'dev', '§16.4 分支名 dev 合法')
   equal(normalizeRepoBranch('nope'), 'main', '§16.4 非法分支回退 main')

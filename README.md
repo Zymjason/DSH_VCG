@@ -163,6 +163,7 @@
 ## 本地工具与模型（专业模式）
 
 - 打开「专业模式」后，设置页出现「本地工具与模型」：检测 `python3/pip/torch/safetensors/CUDA`、显示磁盘余量，并可一键安装 PyTorch CPU 版（约 200MB）与 safetensors。
+- 「自动安装」默认开启：开启专业模式或启动插件时会自动检测并后台安装缺失的 safetensors / PyTorch CPU；安装进度显示在状态网格中，可随时关闭。
 - 模型目录默认 `~/.dsh/dsh-vcg/models`，支持 `.safetensors/.ckpt/.pt/.pth/.bin`。
 - 节点/工作流可通过 `models[]` 声明推荐权重（名称、文件名、URL、大小、sha256、许可证）。下载前比对仓库可信源清单；非权威来源会弹窗列出风险并要求二次确认。
 - 节点参数类型 `model` 会渲染为已下载模型下拉；可在参数内直接下载声明中的权重。

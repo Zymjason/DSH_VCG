@@ -6172,6 +6172,8 @@ window.__ModuleLoader__.load({
       setAutoModelsEmpty: '尚未自动读取到模型：请确认 Provider 的 /models 接口可用且已填写 API Key，然后点击「自动检测」。',
       setAutoModelsHint: '只读：包含语音等非生成类模型，仅用于查看，不会改动上方可编辑的模型列表。',
       setProviderDisabled: '默认 provider 已被禁用；运行工作流前请启用它或切换到其他默认 provider。',
+      cvLocalAutoInstall: '专业模式下自动安装缺失工具',
+      cvLocalAutoInstallHint: '开启专业模式或启动插件时自动检测并后台安装 safetensors 与 PyTorch（CPU 版，约 200MB）；安装进度见下方状态网格，可随时关闭。',
     },
     {
       setTitle: 'VCG Visual Control Generator',
@@ -6310,6 +6312,8 @@ window.__ModuleLoader__.load({
       setAutoModelsEmpty: 'No models read yet: check the provider /models endpoint and API key, then run auto-detect.',
       setAutoModelsHint: 'Read-only: includes non-generation models (e.g. audio); viewing only, the editable model lists above are unchanged.',
       setProviderDisabled: 'The default provider is disabled; enable it or pick another default provider before running workflows.',
+      cvLocalAutoInstall: 'Auto-install missing tools in pro mode',
+      cvLocalAutoInstallHint: 'When pro mode is enabled or the plugin starts, detect and install safetensors and PyTorch (CPU build, ~200MB) in the background; progress is shown in the status grid below and can be turned off anytime.',
     },
   )
 
@@ -6936,6 +6940,9 @@ window.__ModuleLoader__.load({
     /* 表单里的专业模式要保存后宿主才生效：RPC 以宿主状态为准。 */
     const hostProMode = Boolean(store.state && store.state.proMode)
     const active = proMode && hostProMode
+    /* §16.5 local.autoInstall：缺省视为开启（宿主默认 true）。 */
+    const localState = store.state && typeof store.state.local === 'object' && store.state.local !== null ? store.state.local : {}
+    const autoInstall = localState.autoInstall !== false
     const [status, setStatus] = React.useState(null)
     const [statusError, setStatusError] = React.useState('')
     const [detecting, setDetecting] = React.useState(false)
@@ -6948,6 +6955,7 @@ window.__ModuleLoader__.load({
     const [form, setForm] = React.useState({ url: '', filename: '', sha256: '', size: '', format: 'safetensors' })
     const [formError, setFormError] = React.useState('')
     const [downloadTarget, setDownloadTarget] = React.useState(null)
+    const [autoInstallBusy, setAutoInstallBusy] = React.useState(false)
 
     const loadStatus = React.useCallback(async (quiet) => {
       if (!quiet) setDetecting(true)
@@ -7034,6 +7042,25 @@ window.__ModuleLoader__.load({
 
     function setField(key, value) {
       setForm((previous) => Object.assign({}, previous, { [key]: value }))
+    }
+
+    /* §16.5 自动安装开关：宿主在 proMode && local.autoInstall 时自动检测并后台安装。 */
+    async function toggleAutoInstall(next) {
+      if (autoInstallBusy) return
+      setAutoInstallBusy(true)
+      setInstallError('')
+      try {
+        const result = await V.rpc('saveSettings', { local: { autoInstall: Boolean(next) } })
+        if (result && result.state) V.setStore({ state: result.state, loaded: true, loading: false, error: '' })
+        else await V.refresh().catch(() => {})
+        /* 宿主开启自动安装后会立刻后台启动：刷新一次状态以进入 2s 轮询。 */
+        await loadStatus(true)
+        setNotice(t('setSaveOk'))
+      } catch (error) {
+        setInstallError(msgOf(error))
+      } finally {
+        setAutoInstallBusy(false)
+      }
     }
 
     const statusRows = []
@@ -7165,6 +7192,17 @@ window.__ModuleLoader__.load({
           V.Fragment,
           null,
           h('div', { className: 'vcg-hint' }, t('cvLocalToolsDesc')),
+          h(
+            'div',
+            { className: 'vcg-tool-auto' },
+            h(Toggle, {
+              checked: autoInstall,
+              disabled: autoInstallBusy,
+              label: t('cvLocalAutoInstall'),
+              hint: autoInstallBusy ? t('saving') : t('cvLocalAutoInstallHint'),
+              onChange: toggleAutoInstall,
+            }),
+          ),
           statusError ? h(Banner, { kind: 'error', title: t('cvLocalDetectFailed') }, statusError) : null,
           status && (!toolStateOk(status.torch) || !toolStateOk(status.safetensors))
             ? h(Banner, { kind: 'warn', title: t('cvLocalMissing') }, t('cvLocalInstallSizes'))
@@ -8129,6 +8167,7 @@ window.__ModuleLoader__.load({
 .vcg-tool-kv-value{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
 .vcg-tool-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--dsw-alias-label-secondary);word-break:break-all}
 .vcg-tool-actions{flex-wrap:wrap;gap:8px}
+.vcg-tool-auto{margin:2px 0 4px}
 .vcg-tool-models{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--dsw-alias-border-l1);padding-top:10px}
 .vcg-tool-model-list{display:flex;flex-direction:column;gap:3px;max-height:220px;overflow:auto}
 .vcg-tool-model-row{display:grid;grid-template-columns:minmax(0,2.2fr) 90px 90px 130px;gap:8px;align-items:center;font-size:11.5px;padding:4px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:var(--dsw-alias-bg-layer-1)}

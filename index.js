@@ -168,6 +168,52 @@ class VcgStudio {
     this.registerPromptSection()
     this.repoCatalogCache = new Map()
     this.watchServices()
+    // §16.5: proMode + autoInstall => install missing local tools in the background.
+    void this.maybeAutoInstallTools('startup')
+  }
+
+  /**
+   * §16.5: when proMode is on and local.autoInstall is enabled, make sure the
+   * local toolchain (safetensors / CPU PyTorch) exists, installing it in the
+   * background. Never throws: install progress is exposed by toolsStatus().
+   */
+  async maybeAutoInstallTools(reason = 'auto') {
+    if (this.disposed || this.state.proMode !== true || this.state.local.autoInstall !== true) {
+      return { started: false, reason: 'disabled' }
+    }
+    // Tests and offline environments can opt out of real pip downloads.
+    if (process.env.DSH_VCG_DISABLE_AUTO_INSTALL === '1') {
+      return { started: false, reason: 'disabled-by-env' }
+    }
+    const now = Date.now()
+    if (this.autoInstallAttemptAt && now - this.autoInstallAttemptAt < 60000) {
+      return { started: false, reason: 'throttled' }
+    }
+    let status
+    try {
+      status = await this.toolsStatus()
+    } catch (error) {
+      this.log?.warn?.(`dsh-vcg: 本地工具检测失败: ${messageOf(error)}`)
+      return { started: false, reason: 'detect-failed' }
+    }
+    if (status.installing) return { started: false, reason: 'installing' }
+    if (status.python?.available !== true || status.pip?.available !== true) {
+      this.log?.warn?.('dsh-vcg: 未检测到 python3/pip，跳过自动安装本地工具')
+      return { started: false, reason: 'python-missing' }
+    }
+    if (status.torch?.available === true && status.safetensors?.available === true) {
+      return { started: false, reason: 'ready' }
+    }
+    this.autoInstallAttemptAt = now
+    const component = status.safetensors?.available === false ? 'all' : 'torch'
+    try {
+      const started = await this.localTools.install(component)
+      this.log?.info?.(`dsh-vcg: 自动安装本地工具（${component}，来源 ${reason}）`)
+      return { started: true, component, ...started }
+    } catch (error) {
+      this.log?.warn?.(`dsh-vcg: 自动安装本地工具失败: ${messageOf(error)}`)
+      return { started: false, reason: 'install-failed' }
+    }
   }
 
   /** Detect the LLM provider catalog as soon as the service appears. */
@@ -781,6 +827,13 @@ class VcgStudio {
       this.state.outputDir = next
     }
     await this.persist()
+    if (
+      this.state.proMode === true
+      && this.state.local.autoInstall === true
+      && (patch.proMode === true || (isPlainObject(patch.local) && patch.local.autoInstall === true))
+    ) {
+      void this.maybeAutoInstallTools('settings')
+    }
     return { state: this.publicState() }
   }
 
