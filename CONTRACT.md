@@ -380,3 +380,53 @@ sdk/loader.md                 如何从本仓库拉取节点包（raw URL / mani
 - 选中候选：在释放点附近创建节点（不重叠），建立一条边（端口自动取第一个兼容端口；目标输入已有边时替换），并选中新节点。
 - 关闭：选中节点、`Esc`、点击空白处、开始新的拖动/连接。释放点落在节点主体但非端口上视为无效，不弹菜单。
 - 菜单只使用 Canvas 既有 `emitWorkflow` / `validateConnection` / `nextNodeId` / `nextEdgeId` 等内部能力，不新增 Host RPC。
+
+## 14. 第四轮迭代（2026-11-13）：界面主次优化 / 画布分区 / API 全量检测
+
+### 14.1 画布分区（Zones）
+
+工作流 JSON 顶层新增 `zones` 数组；每个分区：
+
+```json
+{ "id": "z1", "label": "分区 1", "x": 0, "y": 0, "w": 640, "h": 360, "color": "violet" }
+```
+
+- `label` 字符串（默认「分区 N」，最长 80 字符）；`x/y/w/h` 有限数字，`w >= 160`、`h >= 100`（加载时 clamp）；`color` 取 `'' | 'violet' | 'blue' | 'green' | 'amber' | 'rose'`。
+- **Host**（`lib/workflow.js`）：`emptyWorkflow` 返回 `zones: []`；`validateWorkflowShape` 保留并规范化 `zones`——丢弃非法项（非对象/缺 id/非有限坐标）、id 去重、最多 100 个；分区不参与图校验、不影响运行。
+- **Canvas**（`parts/canvas.js`）：
+  - 分区绘制在世界坐标层（边与节点之下）；主体填充半透明、边框、顶部标题栏与颜色点；主体 `pointer-events:none`，仅标题栏/缩放手柄可交互，不能遮挡画布平移与节点操作。
+  - 点击标题栏选中分区（`sel.kind === 'zone'`）；`Delete` 删除选中的分区（不删节点）；`Esc` 取消选中。
+  - 拖动标题栏：分区与「拖动开始时中心点位于分区内」的节点一起平移；一次 `emitWorkflow` 写回。
+  - 右下角手柄缩放分区（最小 160×100），释放时写回；`readOnly` 下禁止创建/拖动/缩放/改名/删除。
+  - 双击标题栏内联改名：Enter 提交、Esc 取消。
+  - 工具栏「分区」按钮：有选中节点时按选中节点包围盒 + 36px 内边距创建，否则在视口中心创建 520×340；自动命名「分区 N」并选中；颜色点点击循环 5 种预设色。
+  - 小地图中分区以淡色矩形示意。
+  - 新增 i18n：`cvZone`（分区）、`cvZoneNew`（新建分区）、`cvZoneRename`、`cvZoneDelete`、`cvZoneHint` 等（zhExtra/enExtra）。
+
+### 14.2 界面主次优化
+
+目标：画布/运行是主功能，占满可用空间；运行与 Debug 按钮放大；低频元素收进「更多」菜单。
+
+- **Canvas 工具栏**：单行紧凑布局 `[节点库切换] [工作流名 ≤160px] [运行进度] [弹性空白] [headerExtra] [运行/停止（md，primary/danger）] [Debug 运行（md）] [缩放组：- / % / + / 适应] [更多 ▾]`。
+  - `moreOpen` 浮层收纳：引擎模式（auto/cloud/local）、小地图开关、节点/边数量、输出目录提示、只读标记；点击外部/Esc 关闭。
+  - 节点库面板默认**关闭**（`libraryOpen` 初始 `false`）。
+  - 工具栏 `min-height` 48px、`gap` 8px；运行/Debug 使用 `size:'md'`（core Button 新增 md：padding 7px 16px、font-size 13.5px、line-height 18px、圆角 8px）。
+  - 移除工具栏常驻的 `.vcg-cv-outdir` 文本（移入「更多」）。
+- **Chat VCG 视图（parts/view.js）**：删除常驻 AI 建流块；顶部只保留一行紧凑顶栏（品牌、云端/本地 badge、默认图像模型 badge、保存状态、弹性空白、全屏、切换到对话）。AI 建流改为 Canvas `headerExtra` 中的「AI 建流」按钮（ghost/sm, icon sparkles），点击打开 `Modal` 复用现有 AiBuilder 表单；生成成功应用到画布并关闭。
+- **工作台（parts/studio.js）**：header 压缩为单行（brand 32px、标题 14.5px、删除副标题行改为 title 提示、chips 单行省略）；tabbar/body 内边距收紧。画布打开时不渲染常驻 AiBuilder（改用 Canvas `headerExtra` 的「AI 建流」+ Modal）；无画布的工作流库视图保留紧凑 AiBuilder。移除底部 `.vcg-studio-runbar`。`.vcg-studio-panel` 画布态 `overflow:hidden`，`.vcg-studio-canvas{min-height:0}` 填满剩余高度。
+- 移动端既有 media query 保留。
+
+### 14.3 API 检测读取全部可用模型
+
+- `lib/cloud.js`：
+  - `catalogModels(ids)` 返回值新增 `all: string[]`（全部模型 id，含非生成类）；`classifyModel` 增加音频/语音识别：`audio|tts|asr|realtime|speech|voice` 归类为 `audio`（不进 image/video/text，但保留在 `all`）。
+  - `mergeCatalogs` 合并 `all`（缺省视为 `[]`，向后兼容）；`listProviderModels` 返回 `{models, discovered, all}`。
+- `lib/state.js`：`normalizeModels` 保留 `all`（uniqueStrings）；`maskProvider`/公开 provider 输出包含 `models.all`。
+- `index.js` `detectProviders`：
+  1. 保留 `ctx.llm` 检测（`listProviders`/`listModels`），catalog 含 `all`；
+  2. 对 `state.providers` 中每个有 `baseUrl` 的 provider，用 `providerKey(provider)` 取 key 后调用 `listProviderModels`（8s 超时，尽力而为）；`discovered` 时把 `models`（含 all）合并回记录并持久化；
+  3. 返回值新增 `allModels: { [providerId]: string[] }` 与 `discovered: { [providerId]: { ok, count, error? } }`，不改变 `candidates`/`globalModels` 既有语义。
+- `parts/settings.js`：
+  - 「检测结果」候选卡显示「可用模型 N 个」，可展开查看全部模型 id（来自 `allModels`/`candidate.models.all`）；
+  - provider 编辑卡显示「自动读取的可用模型」只读列表（含非生成类模型），并提示检测来源（/models 或宿主 LLM 配置）；
+  - `TestResult` 修正：`test.models` 是对象 `{image,video,text,audio,all}`，需展开为扁平列表展示（当前 `asArray(object)` 为空）。

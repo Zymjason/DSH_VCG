@@ -366,10 +366,10 @@
 
   /* -------------------------------------------------- AI builder (top card) */
 
-  function AiBuilder({ prompt, onPrompt, busy, result, error, onGenerate, hasCanvas }) {
+  function AiBuilder({ prompt, onPrompt, busy, result, error, onGenerate, hasCanvas, compact }) {
     return h(
       'div',
-      { className: 'vcg-studio-ai' },
+      { className: 'vcg-studio-ai' + (compact ? ' vcg-studio-ai-compact' : '') },
       h(
         'div',
         { className: 'vcg-studio-ai-head' },
@@ -381,7 +381,7 @@
             'div',
             null,
             h('div', { className: 'vcg-studio-ai-title' }, t('stuAiTitle')),
-            h('div', { className: 'vcg-hint' }, t('stuAiDesc')),
+            h('div', { className: 'vcg-hint vcg-studio-ai-desc' }, t('stuAiDesc')),
           ),
         ),
         h(Badge, null, hasCanvas ? t('stuAiCurrent') : t('stuAiFromScratch')),
@@ -522,6 +522,7 @@
     scopeOptions,
     onScopeChange,
     outputDirHint,
+    headerExtra,
     loading,
   }) {
     const Canvas = V.Canvas
@@ -559,24 +560,21 @@
         { className: 'vcg-studio-canvas-toolbar' },
         h(
           'div',
-          { className: 'vcg-row', style: { flexWrap: 'wrap', minWidth: 0 } },
-          h(Button, { size: 'sm', onClick: onBack, icon: 'back' }, t('stuBackLibrary')),
+          { className: 'vcg-studio-canvas-meta' },
+          h(Button, { size: 'sm', variant: 'ghost', onClick: onBack, icon: 'back' }, t('stuBackLibrary')),
           h('span', { className: 'vcg-studio-canvas-name' }, (workflow && workflow.name) || t('stuCanvas')),
           h(Badge, null, t('stuNodeCount', { n: nodeCount })),
           h(Badge, { color: savedAt ? 'var(--dsw-alias-state-success-primary)' : 'var(--dsw-alias-state-warn-primary)' }, savedAt ? t('stuSavedAt', { time: V.formatTime(savedAt) }) : t('stuNotSaved')),
         ),
         h(
           'div',
-          { className: 'vcg-row', style: { flexWrap: 'wrap' } },
+          { className: 'vcg-studio-canvas-tools' },
+          h('span', { className: 'vcg-hint vcg-studio-scope-label', title: t('stuScope') }, t('stuScope')),
+          h(Select, { value: scopeKey, options: scopeOptions, onChange: onScopeChange, style: { width: 160 } }),
           h(
             IconButton,
             { label: fullscreen ? '退出全屏' : '全屏画布', title: fullscreen ? '退出全屏（Esc）' : '全屏画布', onClick: () => setFullscreen((value) => !value) },
             h(Glyph, { name: fullscreen ? 'close' : 'fit', size: 15 }),
-          ),
-          h(
-            Field,
-            { label: t('stuScope'), style: { minWidth: 190 } },
-            h(Select, { value: scopeKey, options: scopeOptions, onChange: onScopeChange }),
           ),
           h(
             Button,
@@ -620,6 +618,7 @@
                   running,
                   readOnly: false,
                   outputDirHint: outputDirHint || '',
+                  headerExtra,
                 })
               : h(Empty, {
                   title: t('stuCanvasMissing'),
@@ -1040,6 +1039,7 @@
     const [aiBusy, setAiBusy] = React.useState(false)
     const [aiResult, setAiResult] = React.useState(null)
     const [aiError, setAiError] = React.useState('')
+    const [aiOpen, setAiOpen] = React.useState(false)
     const [outputsTick, setOutputsTick] = React.useState(0)
     const okTimer = React.useRef(null)
     /* Run-record polling (§13.2): one interval at a time, always torn down. */
@@ -1305,6 +1305,11 @@
       }
     }
 
+    function openAiBuilder() {
+      setAiError('')
+      setAiOpen(true)
+    }
+
     async function buildWorkflowWithAi() {
       const prompt = aiPrompt.trim()
       if (prompt === '') {
@@ -1329,6 +1334,7 @@
           setSelectedId(null)
           setWorkflowError('')
           showOk(t('stuAiApplied'))
+          /* 生成成功只应用到画布，弹窗保持打开以展示 AI 回复/建议，由用户关闭。 */
         } else {
           setAiError(t('stuAiNoWorkflow'))
         }
@@ -1380,6 +1386,7 @@
     /* header chips */
     const providerText = providerLabelOf(state) || t('stuProviderMissing')
     const engineText = state && state.local && state.local.enabled ? t('stuEngineLocal') : t('stuEngineCloud')
+    const chipLabel = (text) => h('span', { className: 'vcg-studio-chip-label' }, text)
     const chips = h(
       'div',
       { className: 'vcg-studio-chips' },
@@ -1392,7 +1399,7 @@
           title: t('stuOpenSettingsHint'),
         },
         h(Glyph, { name: 'cloud', size: 13 }),
-        providerText,
+        chipLabel(providerText),
       ),
       h(
         'button',
@@ -1403,7 +1410,7 @@
           title: t('stuOpenSettingsHint'),
         },
         h(Glyph, { name: engineText === t('stuEngineLocal') ? 'server' : 'bolt', size: 13 }),
-        t('stuEngine') + '：' + engineText,
+        chipLabel(t('stuEngine') + '：' + engineText),
       ),
       h(
         'button',
@@ -1414,7 +1421,7 @@
           onClick: () => setTab('outputs'),
         },
         h(Glyph, { name: 'folder', size: 13 }),
-        t('stuOutputDir') + '：' + outputDir,
+        chipLabel(t('stuOutputDir') + '：' + outputDir),
       ),
     )
 
@@ -1423,19 +1430,14 @@
       { className: 'vcg-studio-header' },
       h(
         'div',
-        { className: 'vcg-row', style: { minWidth: 0, flexWrap: 'wrap' } },
-        h('div', { className: 'vcg-studio-brand' }, h(Glyph, { name: 'sparkles', size: 20 })),
-        h(
-          'div',
-          { style: { minWidth: 0 } },
-          h('div', { className: 'vcg-studio-title' }, t('stuTitle')),
-          h('div', { className: 'vcg-studio-subtitle' }, t('stuDesc')),
-        ),
+        { className: 'vcg-studio-head-left' },
+        h('div', { className: 'vcg-studio-brand' }, h(Glyph, { name: 'sparkles', size: 17 })),
+        h('div', { className: 'vcg-studio-title', title: t('stuDesc') }, t('stuTitle')),
       ),
       chips,
       h(
         'div',
-        { className: 'vcg-row' },
+        { className: 'vcg-row', style: { flex: 'none' } },
         h(Button, { size: 'sm', onClick: refreshAll, icon: 'refresh' }, t('stuRefresh')),
       ),
     )
@@ -1448,23 +1450,29 @@
         { id: 'settings', label: t('stuTabSettings') },
       ],
       active: tab,
-      onChange: setTab,
+      onChange: (next) => {
+        setAiOpen(false)
+        setTab(next)
+      },
     })
 
     function renderWorkflowsTab() {
       const workflowsError = workflowsAsync.error ? msgOf(workflowsAsync.error) : ''
+      const hasCanvas = Boolean(canvas)
+      const aiBuilderProps = {
+        prompt: aiPrompt,
+        onPrompt: setAiPrompt,
+        busy: aiBusy,
+        result: aiResult,
+        error: aiError,
+        onGenerate: buildWorkflowWithAi,
+        hasCanvas,
+      }
       return h(
         'div',
-        { className: 'vcg-studio-panel' },
-        h(AiBuilder, {
-          prompt: aiPrompt,
-          onPrompt: setAiPrompt,
-          busy: aiBusy,
-          result: aiResult,
-          error: aiError,
-          onGenerate: buildWorkflowWithAi,
-          hasCanvas: Boolean(canvas),
-        }),
+        { className: 'vcg-studio-panel' + (hasCanvas ? ' vcg-studio-panel-canvas' : '') },
+        /* 画布打开时不渲染常驻 AiBuilder：改由 Canvas headerExtra「AI 建流」+ Modal。 */
+        hasCanvas ? null : h(AiBuilder, Object.assign({}, aiBuilderProps, { compact: true })),
         workflowError ? h(Banner, { kind: 'error', title: t('stuRunError'), action: h(Button, { size: 'sm', onClick: () => setWorkflowError('') }, t('close')) }, workflowError) : null,
         workflowOk ? h(Banner, { kind: 'success' }, workflowOk) : null,
         runError ? h(Banner, { kind: 'error', title: t('stuRunFail') }, runError) : null,
@@ -1489,11 +1497,17 @@
                 setResults({})
                 setSelectedId(null)
                 setRunError('')
+                setAiOpen(false)
               },
               scopeKey,
               scopeOptions,
               onScopeChange: changeScope,
               outputDirHint,
+              headerExtra: h(
+                Button,
+                { size: 'sm', variant: 'ghost', icon: 'sparkles', onClick: openAiBuilder, title: t('stuAiDesc') },
+                'AI 建流',
+              ),
               loading: canvasLoading,
             })
           : h(WorkflowLibrary, {
@@ -1505,7 +1519,13 @@
               onNew: createEmptyWorkflow,
               onReload: workflowsAsync.reload,
             }),
-        running ? h('div', { className: 'vcg-studio-runbar' }, h(Spinner, { size: 14, label: t('stuRunning') })) : null,
+        hasCanvas
+          ? h(
+              Modal,
+              { open: aiOpen, title: t('stuAiTitle'), onClose: () => setAiOpen(false), width: 'min(720px,100%)' },
+              h(AiBuilder, aiBuilderProps),
+            )
+          : null,
       )
     }
 
@@ -1548,20 +1568,27 @@
   const CSS = `
 .vcg-studio-root{height:100%;min-height:0;display:flex;flex-direction:column;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-size:13px;line-height:1.5;overflow:hidden}
 .vcg-studio-root *{box-sizing:border-box}
-.vcg-studio-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 18px;border-bottom:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap;flex:none}
-.vcg-studio-brand{width:38px;height:38px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:#fff;background:linear-gradient(135deg,var(--dsw-alias-brand-primary),color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,var(--dsw-alias-bg-base)));box-shadow:0 2px 12px color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}
-.vcg-studio-title{font-size:15px;font-weight:650;line-height:1.25}
-.vcg-studio-subtitle{font-size:12px;color:var(--dsw-alias-label-secondary);max-width:560px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vcg-studio-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.vcg-studio-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;border-bottom:1px solid var(--dsw-alias-border-l1);flex-wrap:nowrap;flex:none;min-width:0}
+.vcg-studio-head-left{display:flex;align-items:center;gap:8px;min-width:0;flex:none}
+.vcg-studio-brand{width:32px;height:32px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:#fff;background:linear-gradient(135deg,var(--dsw-alias-brand-primary),color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,var(--dsw-alias-bg-base)));box-shadow:0 2px 12px color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}
+.vcg-studio-title{font-size:14.5px;font-weight:650;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.vcg-studio-chips{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0;flex:1;overflow:hidden}
+.vcg-studio-chips .vcg-chip{flex:0 1 auto;min-width:0;max-width:260px;overflow:hidden}
+.vcg-studio-chip-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .vcg-studio-chip-warn{color:var(--dsw-alias-state-warn-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 45%,var(--dsw-alias-border-l1))}
-.vcg-studio-tabbar{padding:0 18px;flex:none;border-bottom:1px solid var(--dsw-alias-border-l1)}
-.vcg-studio-headererror{padding:8px 18px 0;flex:none}
-.vcg-studio-body{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 18px 0;overflow:hidden}
-.vcg-studio-panel{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding-bottom:20px;overflow:auto}
+.vcg-studio-tabbar{padding:0 12px;flex:none;border-bottom:1px solid var(--dsw-alias-border-l1)}
+.vcg-studio-headererror{padding:8px 12px 0;flex:none}
+.vcg-studio-body{flex:1;min-height:0;display:flex;flex-direction:column;padding:8px 12px 0;overflow:hidden}
+.vcg-studio-panel{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding-bottom:16px;overflow:auto}
+.vcg-studio-panel-canvas{overflow:hidden;padding-bottom:0;gap:6px}
 .vcg-studio-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:2px}
 .vcg-studio-section-title{font-size:14px;font-weight:650}
 .vcg-studio-loading{display:flex;align-items:center;justify-content:center;padding:40px 0;flex:1}
-.vcg-studio-ai{border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-layer-1);padding:12px;display:flex;flex-direction:column;gap:10px;flex:none}
+.vcg-studio-ai{border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-layer-1);padding:10px 12px;display:flex;flex-direction:column;gap:8px;flex:none}
+.vcg-studio-ai-compact{padding:8px 10px;gap:6px;border-radius:10px}
+.vcg-studio-ai-compact .vcg-studio-ai-title{font-size:12.5px}
+.vcg-studio-ai-compact .vcg-studio-ai-desc{display:none}
+.vcg-studio-ai-compact .vcg-studio-ai-row .vcg-textarea{min-height:44px}
 .vcg-studio-ai-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .vcg-studio-ai-mark{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 13%,transparent)}
 .vcg-studio-ai-title{font-size:13px;font-weight:650}
@@ -1577,14 +1604,19 @@
 .vcg-studio-wf-name{font-size:13px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vcg-studio-wf-desc{font-size:12px;color:var(--dsw-alias-label-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px}
 .vcg-studio-wf-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
-.vcg-studio-canvas-panel{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding-bottom:20px}
+.vcg-studio-canvas-panel{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;padding-bottom:0;overflow:hidden}
 .vcg-studio-canvas-panel-full{position:fixed;inset:0;z-index:80;background:var(--dsw-alias-bg-base);height:100vh;width:100vw;box-shadow:0 0 0 1px var(--dsw-alias-border-l2)}
-.vcg-studio-canvas-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;flex:none}
-.vcg-studio-canvas-name{font-size:13px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:320px}
-.vcg-studio-canvas-hint{font-size:11.5px;color:var(--dsw-alias-label-secondary);margin-top:-4px}
-.vcg-studio-canvas{flex:1;min-height:380px;display:flex;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;overflow:hidden;background:var(--dsw-alias-bg-layer-1);position:relative}
+/* 全屏画布（z-index:80）之上仍要能看到 AI / Debug 弹窗 */
+.vcg-studio-root .vcg-modal-backdrop{z-index:90}
+.vcg-studio-canvas-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap;flex:none;min-width:0}
+.vcg-studio-canvas-meta{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden}
+.vcg-studio-canvas-tools{display:flex;align-items:center;gap:6px;flex:none}
+.vcg-studio-canvas-name{font-size:13px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+.vcg-studio-scope-label{white-space:nowrap}
+.vcg-studio-canvas-tools .vcg-select{height:28px;padding:3px 8px;font-size:12px}
+.vcg-studio-canvas-hint{font-size:11px;color:var(--dsw-alias-label-secondary);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
+.vcg-studio-canvas{flex:1;min-height:0;display:flex;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;overflow:hidden;background:var(--dsw-alias-bg-layer-1);position:relative}
 .vcg-studio-canvas > *{flex:1;min-width:0;min-height:0}
-.vcg-studio-runbar{display:flex;align-items:center;gap:8px;justify-content:center;padding:6px;flex:none}
 .vcg-studio-create{border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1);padding:12px;display:flex;flex-direction:column;gap:10px;flex:none}
 .vcg-studio-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .vcg-studio-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--dsw-alias-label-secondary);word-break:break-all}
@@ -1601,13 +1633,16 @@
 .vcg-studio-out-path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
 .vcg-studio-out-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:11px}
 @media (max-width:760px){
-  .vcg-studio-header{padding:10px 12px}
-  .vcg-studio-body{padding:10px 12px 0}
-  .vcg-studio-tabbar{padding:0 12px}
+  .vcg-studio-header{padding:8px 10px;gap:8px;flex-wrap:wrap}
+  .vcg-studio-chips{flex-wrap:wrap;overflow:visible;flex-basis:100%}
+  .vcg-studio-chips .vcg-chip{max-width:100%}
+  .vcg-studio-body{padding:8px 10px 0}
+  .vcg-studio-tabbar{padding:0 10px}
   .vcg-studio-ai-row{flex-direction:column}
   .vcg-studio-ai-row .vcg-btn{width:100%}
   .vcg-studio-grid2{grid-template-columns:minmax(0,1fr)}
-  .vcg-studio-subtitle{white-space:normal}
+  .vcg-studio-canvas-toolbar{flex-wrap:wrap;row-gap:6px}
+  .vcg-studio-canvas-tools{flex-wrap:wrap}
 }
 `
 

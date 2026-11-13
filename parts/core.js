@@ -466,6 +466,7 @@
 .vcg-btn-danger{color:var(--dsw-alias-state-error-primary)}
 .vcg-btn-danger:hover:not(:disabled){border-color:var(--dsw-alias-state-error-primary);background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 10%,transparent)}
 .vcg-btn-sm{padding:3px 8px;font-size:12px;line-height:16px;border-radius:6px}
+.vcg-btn-md{padding:7px 16px;font-size:13.5px;line-height:18px;border-radius:8px}
 .vcg-iconbtn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);border-radius:6px;cursor:pointer}
 .vcg-iconbtn:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
 .vcg-input,.vcg-textarea,.vcg-select{width:100%;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);border-radius:8px;padding:6px 9px;font-size:13px;font-family:inherit;outline:none;transition:border-color 120ms ease}
@@ -598,6 +599,7 @@
     else if (variant === 'danger') classes.push('vcg-btn-danger')
     else if (variant === 'ghost') classes.push('vcg-btn-ghost')
     if (size === 'sm') classes.push('vcg-btn-sm')
+    else if (size === 'md') classes.push('vcg-btn-md')
     if (className) classes.push(className)
     return h(
       'button',

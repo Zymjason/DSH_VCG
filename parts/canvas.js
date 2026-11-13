@@ -89,6 +89,18 @@
     cvRunProgress: '运行中 {done}/{total}',
     cvRunFailed: '失败 {failed}',
     cvRunCurrent: '当前：{node}',
+    cvZone: '分区',
+    cvZoneNew: '新建分区',
+    cvZoneName: '分区 {n}',
+    cvZoneDefault: '分区',
+    cvZoneHint: '拖动标题栏平移分区（分区内节点一起移动）· 右下角拖拽缩放 · 双击标题栏改名 · Delete 删除分区',
+    cvZoneRename: '重命名分区（Enter 提交 / Esc 取消）',
+    cvZoneDelete: '删除分区（不删除节点）',
+    cvZoneResize: '拖动调整分区大小（最小 160 × 100）',
+    cvZoneColor: '切换分区颜色',
+    cvMore: '更多',
+    cvMoreEngine: '引擎模式',
+    cvGraphStats: '图统计',
   }
   const enExtra = {
     cvNodeLibrary: 'Node library',
@@ -156,6 +168,18 @@
     cvRunProgress: 'Running {done}/{total}',
     cvRunFailed: 'failed {failed}',
     cvRunCurrent: 'now: {node}',
+    cvZone: 'Zone',
+    cvZoneNew: 'New zone',
+    cvZoneName: 'Zone {n}',
+    cvZoneDefault: 'Zone',
+    cvZoneHint: 'Drag the title bar to move the zone (nodes inside move too) · drag the bottom-right corner to resize · double-click the title to rename · Delete removes the zone',
+    cvZoneRename: 'Rename zone (Enter to commit / Esc to cancel)',
+    cvZoneDelete: 'Delete zone (keeps nodes)',
+    cvZoneResize: 'Drag to resize the zone (min 160 × 100)',
+    cvZoneColor: 'Cycle zone color',
+    cvMore: 'More',
+    cvMoreEngine: 'Engine mode',
+    cvGraphStats: 'Graph',
   }
   if (typeof V.addDict === 'function') V.addDict(zhExtra, enExtra)
 
@@ -179,6 +203,20 @@
   const MINI_W = 186
   const MINI_H = 120
   const EMPTY_OBJECT = {}
+  /* Zones (§14.1): visual grouping boxes drawn in world coordinates. */
+  const ZONE_MIN_W = 160
+  const ZONE_MIN_H = 100
+  const ZONE_HEADER_H = 30
+  const ZONE_PAD = 36
+  const ZONE_MAX = 100
+  const ZONE_COLOR_CYCLE = ['violet', 'blue', 'green', 'amber', 'rose']
+  const ZONE_COLOR_VARS = {
+    violet: 'var(--dsw-alias-brand-primary)',
+    blue: 'var(--dsw-alias-state-business-primary)',
+    green: 'var(--dsw-alias-state-success-primary)',
+    amber: 'var(--dsw-alias-state-warn-primary)',
+    rose: 'var(--dsw-alias-state-error-primary)',
+  }
 
   const RAF =
     typeof requestAnimationFrame === 'function'
@@ -292,6 +330,51 @@
     }
     return 'n' + (max + 1)
   }
+  function nextZoneId(zones) {
+    let max = 0
+    const used = new Set()
+    for (const zone of Array.isArray(zones) ? zones : []) {
+      if (!zone || typeof zone.id !== 'string') continue
+      used.add(zone.id)
+      const match = /^z(\d+)$/.exec(zone.id)
+      if (match) max = Math.max(max, Number(match[1]))
+    }
+    let id = 'z' + (max + 1)
+    let guard = 0
+    while (used.has(id) && guard < ZONE_MAX + 10) {
+      guard += 1
+      max += 1
+      id = 'z' + (max + 1)
+    }
+    return id
+  }
+  /** Next auto zone number: max trailing number of existing labels + 1. */
+  function nextZoneNumber(zones) {
+    let max = 0
+    for (const zone of Array.isArray(zones) ? zones : []) {
+      if (!zone) continue
+      const match = /(\d+)\s*$/.exec(String(zone.label || ''))
+      if (match) max = Math.max(max, Number(match[1]))
+    }
+    return max + 1
+  }
+  function zoneColorVar(color) {
+    return ZONE_COLOR_VARS[color] || 'var(--dsw-alias-label-secondary)'
+  }
+  function nextZoneColor(color) {
+    const index = ZONE_COLOR_CYCLE.indexOf(String(color || ''))
+    return ZONE_COLOR_CYCLE[(index + 1) % ZONE_COLOR_CYCLE.length]
+  }
+  /** Resolved rectangle of one zone (numbers, min-size clamped). */
+  function zoneRect(zone) {
+    if (!zone) return { x: 0, y: 0, w: ZONE_MIN_W, h: ZONE_MIN_H }
+    return {
+      x: isFiniteNumber(zone.x) ? zone.x : 0,
+      y: isFiniteNumber(zone.y) ? zone.y : 0,
+      w: Math.max(ZONE_MIN_W, isFiniteNumber(zone.w) ? zone.w : ZONE_MIN_W),
+      h: Math.max(ZONE_MIN_H, isFiniteNumber(zone.h) ? zone.h : ZONE_MIN_H),
+    }
+  }
   function nextEdgeId(edges) {
     const used = new Set()
     let max = 0
@@ -366,6 +449,24 @@
       minY = Math.min(minY, y)
       maxX = Math.max(maxX, x + width)
       maxY = Math.max(maxY, y + height)
+    }
+    if (!Number.isFinite(minX)) return null
+    return { minX, minY, maxX, maxY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) }
+  }
+  /** Union bounds of nodes and zones (used by the minimap; §14.1). */
+  function worldBounds(nodes, zones, defsById, measured) {
+    const base = nodesBounds(nodes, defsById, measured)
+    let minX = base ? base.minX : Infinity
+    let minY = base ? base.minY : Infinity
+    let maxX = base ? base.maxX : -Infinity
+    let maxY = base ? base.maxY : -Infinity
+    for (const zone of Array.isArray(zones) ? zones : []) {
+      if (!zone) continue
+      const rect = zoneRect(zone)
+      minX = Math.min(minX, rect.x)
+      minY = Math.min(minY, rect.y)
+      maxX = Math.max(maxX, rect.x + rect.w)
+      maxY = Math.max(maxY, rect.y + rect.h)
     }
     if (!Number.isFinite(minX)) return null
     return { minX, minY, maxX, maxY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) }
@@ -492,9 +593,9 @@
 
 /* ---------------------------------------------------------------- toolbar */
 .vcg-cv-main{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0}
-.vcg-cv-toolbar{display:flex;align-items:center;gap:7px;padding:6px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);flex:none;flex-wrap:wrap;row-gap:6px;min-height:42px}
-.vcg-cv-tb-title{font-size:13px;font-weight:600;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vcg-cv-tb-meta{font-size:11px;color:var(--dsw-alias-label-secondary);white-space:nowrap;font-variant-numeric:tabular-nums}
+.vcg-cv-toolbar{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);flex:none;flex-wrap:nowrap;min-height:48px;position:relative;overflow:visible}
+.vcg-cv-tb-title{font-size:13px;font-weight:600;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
+.vcg-cv-tb-label{font-size:12px;white-space:nowrap}
 .vcg-cv-tb-spacer{flex:1;min-width:6px}
 .vcg-cv-tb-sep{width:1px;height:18px;background:var(--dsw-alias-border-l1);margin:0 2px;flex:none}
 .vcg-cv-tbtn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:26px;min-width:26px;padding:0 7px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font-family:inherit;font-size:12px;line-height:1;cursor:pointer;transition:background 100ms ease,border-color 100ms ease,color 100ms ease}
@@ -508,9 +609,21 @@
 .vcg-cv-seg-btn:hover:not(:disabled){background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
 .vcg-cv-seg-btn-active{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 13%,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-brand-primary);font-weight:600}
 .vcg-cv-seg-btn:disabled{opacity:.5;cursor:default}
-.vcg-cv-outdir{display:inline-flex;align-items:center;gap:5px;max-width:220px;font-size:11px;color:var(--dsw-alias-label-secondary);border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:999px;padding:2px 9px;min-height:24px;flex:none}
-.vcg-cv-outdir-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vcg-cv-readonly{font-size:10.5px;font-weight:600;color:var(--dsw-alias-state-warn-primary);border:1px solid color-mix(in srgb,var(--dsw-alias-state-warn-primary) 40%,var(--dsw-alias-border-l1));border-radius:999px;padding:1px 8px;line-height:16px;flex:none}
+.vcg-cv-more-wrap{position:relative;flex:none}
+.vcg-cv-more-btn{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font-family:inherit;font-size:12px;line-height:1;cursor:pointer;flex:none}
+.vcg-cv-more-btn:hover,.vcg-cv-more-btn-active{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2)}
+.vcg-cv-more-caret{transform:rotate(90deg);opacity:.7}
+.vcg-cv-more-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:12;min-width:240px;max-width:min(320px,calc(100vw - 32px));display:flex;flex-direction:column;gap:2px;padding:6px;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.2);font-size:12px;color:var(--dsw-alias-label-primary)}
+.vcg-cv-more-row{display:flex;align-items:center;gap:8px;min-height:30px;padding:4px 8px;border-radius:7px;min-width:0}
+.vcg-cv-more-label{flex:1;min-width:0;font-size:11.5px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-cv-more-value{font-size:11px;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}
+.vcg-cv-more-item{display:flex;align-items:center;gap:7px;width:100%;min-height:30px;padding:4px 8px;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:12px;text-align:left;cursor:pointer}
+.vcg-cv-more-item:hover:not(:disabled){background:var(--dsw-alias-bg-layer-2)}
+.vcg-cv-more-item:disabled{opacity:.55;cursor:default}
+.vcg-cv-more-item-label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcg-cv-more-sep{height:1px;background:var(--dsw-alias-border-l1);margin:4px 2px}
+.vcg-cv-more-outdir{display:flex;align-items:flex-start;gap:6px;padding:6px 8px;font-size:10.5px;line-height:1.4;color:var(--dsw-alias-label-secondary);word-break:break-all}
+.vcg-cv-more-readonly{display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:11px;color:var(--dsw-alias-state-warn-primary)}
 
 /* ------------------------------------------------------------------ stage */
 .vcg-cv-stage-wrap{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--dsw-alias-bg-base)}
@@ -645,7 +758,26 @@
 .vcg-cv-minimap{position:absolute;right:10px;bottom:10px;z-index:3;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 92%,transparent);box-shadow:0 4px 16px rgba(0,0,0,.16);overflow:hidden;cursor:crosshair;user-select:none;backdrop-filter:blur(4px)}
 .vcg-cv-minimap svg{display:block}
 .vcg-cv-mini-node{fill:color-mix(in srgb,var(--dsw-alias-label-secondary) 34%,transparent)}
+.vcg-cv-mini-zone{vector-effect:non-scaling-stroke;stroke-width:1;stroke-dasharray:2 1.5}
 .vcg-cv-mini-view{fill:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent);stroke:var(--dsw-alias-brand-primary);stroke-width:1;vector-effect:non-scaling-stroke}
+
+/* ------------------------------------------------------------- zones §14.1 */
+.vcg-cv-zone{position:absolute;z-index:0;pointer-events:none;border-radius:12px;border:1px solid color-mix(in srgb,var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary)) 34%,var(--dsw-alias-border-l1));background:color-mix(in srgb,var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary)) 6%,transparent);transition:border-color 100ms ease,background 100ms ease}
+.vcg-cv-zone-selected{border-color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 8%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 32%,transparent)}
+.vcg-cv-zone-head{position:absolute;left:0;right:0;top:0;height:30px;display:flex;align-items:center;gap:6px;padding:0 8px;pointer-events:auto;cursor:grab;user-select:none;min-width:0;border-bottom:1px solid color-mix(in srgb,var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary)) 22%,transparent);background:color-mix(in srgb,var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary)) 12%,var(--dsw-alias-bg-layer-1));border-radius:12px 12px 0 0}
+.vcg-cv-zone-head:active{cursor:grabbing}
+.vcg-cv-zone-dot{width:10px;height:10px;border-radius:3px;border:0;padding:0;flex:none;cursor:pointer;background:var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary));box-shadow:0 0 0 1px color-mix(in srgb,var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary)) 45%,transparent)}
+.vcg-cv-zone-dot:hover:not(:disabled){filter:brightness(1.2)}
+.vcg-cv-zone-dot:disabled{opacity:.5;cursor:default}
+.vcg-cv-zone-title{flex:1;min-width:0;font-size:11.5px;font-weight:600;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text;letter-spacing:.01em}
+.vcg-cv-zone-selected .vcg-cv-zone-title{color:var(--dsw-alias-label-primary)}
+.vcg-cv-zone-title-input{flex:1;min-width:0;height:20px;border:1px solid var(--dsw-alias-brand-primary);border-radius:5px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-family:inherit;font-size:11.5px;padding:0 5px;outline:none}
+.vcg-cv-zone-act{width:20px;height:20px;border:0;background:transparent;border-radius:5px;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:none;opacity:0;transition:opacity 100ms ease}
+.vcg-cv-zone-selected .vcg-cv-zone-act{opacity:1}
+.vcg-cv-zone-act:hover{background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 14%,transparent);color:var(--dsw-alias-state-error-primary)}
+.vcg-cv-zone-handle{position:absolute;right:1px;bottom:1px;width:16px;height:16px;pointer-events:auto;cursor:nwse-resize;opacity:0;transition:opacity 100ms ease}
+.vcg-cv-zone:hover .vcg-cv-zone-handle,.vcg-cv-zone-selected .vcg-cv-zone-handle{opacity:1}
+.vcg-cv-zone-handle::before{content:"";position:absolute;right:4px;bottom:4px;width:7px;height:7px;border-right:2px solid var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary));border-bottom:2px solid var(--vcg-cv-zone-color,var(--dsw-alias-label-secondary));border-radius:0 0 1px 0;opacity:.8}
 
 /* ---------------------------------------------------------------- preview */
 .vcg-cv-preview{display:flex;align-items:center;justify-content:center;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:8px;padding:8px;min-height:120px}
@@ -654,7 +786,7 @@
 
 @media (max-width: 980px){
   .vcg-cv-lib{width:204px}
-  .vcg-cv-outdir{max-width:150px}
+  .vcg-cv-tb-title{max-width:96px}
 }
 `
 
@@ -1445,6 +1577,128 @@
     )
   }
 
+  /* ------------------------------------------------------------- ZoneBox */
+
+  /**
+   * One zone (§14.1): world-space box with an interactive title bar and a
+   * bottom-right resize handle. The body itself is pointer-events:none so the
+   * canvas pan / node / edge gestures underneath keep working.
+   */
+  function ZoneBox(props) {
+    const { zone, selected, readOnly } = props
+    const [renaming, setRenaming] = React.useState(false)
+    const [draft, setDraft] = React.useState('')
+    const cancelledRef = React.useRef(false)
+    if (!zone || !zone.id) return null
+    const rect = zoneRect(zone)
+    const colorVar = zoneColorVar(zone.color)
+    const label = zone.label || t('cvZoneDefault')
+    return h(
+      'div',
+      {
+        ref: (el) => {
+          if (typeof props.registerEl === 'function') props.registerEl(zone.id, el)
+        },
+        className: 'vcg-cv-zone' + (selected ? ' vcg-cv-zone-selected' : ''),
+        'data-zone-id': zone.id,
+        style: { left: rect.x, top: rect.y, width: rect.w, height: rect.h, '--vcg-cv-zone-color': colorVar },
+        onContextMenu: (event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        },
+      },
+      h(
+        'div',
+        {
+          className: 'vcg-cv-zone-head',
+          title: t('cvZoneHint'),
+          onPointerDown: (event) => props.onHeadPointerDown(event, zone),
+          onDoubleClick: (event) => event.stopPropagation(),
+        },
+        h('button', {
+          type: 'button',
+          className: 'vcg-cv-zone-dot',
+          title: t('cvZoneColor'),
+          'aria-label': t('cvZoneColor'),
+          disabled: readOnly,
+          onPointerDown: stopEvent,
+          onClick: (event) => {
+            event.stopPropagation()
+            props.onCycleColor(zone.id)
+          },
+        }),
+        renaming
+          ? h('input', {
+              className: 'vcg-cv-zone-title-input',
+              value: draft,
+              autoFocus: true,
+              maxLength: 80,
+              placeholder: t('cvZoneDefault'),
+              title: t('cvZoneRename'),
+              onFocus: (event) => event.target.select(),
+              onChange: (event) => setDraft(event.target.value),
+              onPointerDown: stopEvent,
+              onKeyDown: (event) => {
+                stopEvent(event)
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  event.currentTarget.blur()
+                } else if (event.key === 'Escape') {
+                  event.preventDefault()
+                  cancelledRef.current = true
+                  event.currentTarget.blur()
+                }
+              },
+              onBlur: () => {
+                setRenaming(false)
+                if (cancelledRef.current) {
+                  cancelledRef.current = false
+                  return
+                }
+                props.onRename(zone.id, draft.trim())
+              },
+            })
+          : h(
+              'span',
+              {
+                className: 'vcg-cv-zone-title',
+                title: label + ' — ' + t('cvZoneRename'),
+                onDoubleClick: (event) => {
+                  event.stopPropagation()
+                  if (readOnly) return
+                  setDraft(zone.label || '')
+                  setRenaming(true)
+                },
+              },
+              label,
+            ),
+        selected && !readOnly
+          ? h(
+              'button',
+              {
+                type: 'button',
+                className: 'vcg-cv-zone-act',
+                title: t('cvZoneDelete'),
+                'aria-label': t('cvZoneDelete'),
+                onPointerDown: stopEvent,
+                onClick: (event) => {
+                  event.stopPropagation()
+                  props.onDelete(zone.id)
+                },
+              },
+              h(Glyph, { name: 'trash', size: 11 }),
+            )
+          : null,
+      ),
+      h('div', {
+        className: 'vcg-cv-zone-handle',
+        title: t('cvZoneResize'),
+        'aria-label': t('cvZoneResize'),
+        onPointerDown: (event) => props.onHandlePointerDown(event, zone),
+      }),
+    )
+  }
+
   /* ---------------------------------------------------------------- Canvas */
 
   function emptyWorkflow(id) {
@@ -1459,6 +1713,7 @@
       viewport: { x: 0, y: 0, scale: 1 },
       nodes: [],
       edges: [],
+      zones: [],
     }
   }
 
@@ -1485,6 +1740,7 @@
     const workflow = rawWf || EMPTY_OBJECT
     const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : []
     const edges = Array.isArray(workflow.edges) ? workflow.edges : []
+    const zones = Array.isArray(workflow.zones) ? workflow.zones : []
     const nodeDefs = Array.isArray(props.nodeDefs) ? props.nodeDefs : []
     const results = props.results && typeof props.results === 'object' ? props.results : EMPTY_OBJECT
     const readOnly = Boolean(props.readOnly)
@@ -1542,9 +1798,12 @@
     defsByIdRef.current = defsById
     const nodeElsRef = React.useRef({})
     const edgeElsRef = React.useRef({})
+    const zoneElsRef = React.useRef({})
     const stageRef = React.useRef(null)
     const worldRef = React.useRef(null)
     const gridRef = React.useRef(null)
+    const moreAnchorRef = React.useRef(null)
+    const prevZoneIdsRef = React.useRef(null)
     const tempPathRef = React.useRef(null)
     const gestureRef = React.useRef(null)
     const gestureCleanupRef = React.useRef(null)
@@ -1581,8 +1840,9 @@
     const [preview, setPreview] = React.useState(null)
     const previewRef = React.useRef(preview)
     previewRef.current = preview
-    const [libraryOpen, setLibraryOpen] = React.useState(true)
+    const [libraryOpen, setLibraryOpen] = React.useState(false)
     const [miniOpen, setMiniOpen] = React.useState(true)
+    const [moreOpen, setMoreOpen] = React.useState(false)
     const [spaceDown, setSpaceDown] = React.useState(false)
     const [panning, setPanning] = React.useState(false)
     const [enginePref, setEnginePref] = React.useState('auto')
@@ -1768,6 +2028,16 @@
       notifySelect(id)
     }
 
+    function selectZone(id) {
+      if (!id) {
+        clearSelection()
+        return
+      }
+      setSel({ kind: 'zone', id: id })
+      setMulti([])
+      notifySelect(null)
+    }
+
     function clearSelection() {
       setSel({ kind: null, id: null })
       setMulti([])
@@ -1804,6 +2074,21 @@
       notifySelect(null)
     }
 
+    function removeZone(zoneId) {
+      if (readOnly) return
+      const current = workflowBase()
+      const currentZones = Array.isArray(current.zones) ? current.zones : []
+      const nextZones = currentZones.filter((zone) => !zone || zone.id !== zoneId)
+      if (nextZones.length === currentZones.length) return
+      emitWorkflow(Object.assign({}, current, { zones: nextZones }))
+      const active = selRef.current
+      if (active && active.kind === 'zone' && active.id === zoneId) {
+        setSel({ kind: null, id: null })
+        setMulti([])
+        notifySelect(null)
+      }
+    }
+
     function deleteSelection() {
       if (readOnly) return
       if (connectRef.current) {
@@ -1811,6 +2096,10 @@
         return
       }
       const current = selRef.current || { kind: null, id: null }
+      if (current.kind === 'zone') {
+        removeZone(current.id)
+        return
+      }
       if (current.kind === 'edge') {
         removeEdge(current.id)
         return
@@ -1924,6 +2213,100 @@
       setSel({ kind: 'node', id: id })
       setMulti([id])
       notifySelect(id)
+    }
+
+    /* --------------------------------------------------------- zones (§14.1) */
+
+    /** Create a zone around the selected nodes (or the viewport center). */
+    function createZone() {
+      const p = propsRef.current
+      if (!p || p.readOnly) return
+      const current = workflowBase()
+      const currentZones = Array.isArray(current.zones) ? current.zones : []
+      if (currentZones.length >= ZONE_MAX) return
+      const currentNodes = Array.isArray(current.nodes) ? current.nodes : []
+      const active = selRef.current || { kind: null, id: null }
+      const multiIds = multiRef.current || []
+      const wanted = multiIds.length
+        ? multiIds
+        : active.kind === 'node' && active.id
+          ? [active.id]
+          : []
+      const selected = currentNodes.filter((node) => node && wanted.indexOf(node.id) >= 0)
+      const measured = measuredSizes()
+      let rect = null
+      if (selected.length) {
+        let minX = Infinity
+        let minY = Infinity
+        let maxX = -Infinity
+        let maxY = -Infinity
+        for (const node of selected) {
+          const def = defsByIdRef.current[node.type]
+          const size = measured[node.id]
+          const width = size && isFiniteNumber(size.w) ? size.w : nodeWidth(def)
+          const height = size && isFiniteNumber(size.h) ? size.h : estimateNodeHeight(def)
+          const x = isFiniteNumber(node.x) ? node.x : 0
+          const y = isFiniteNumber(node.y) ? node.y : 0
+          minX = Math.min(minX, x)
+          minY = Math.min(minY, y)
+          maxX = Math.max(maxX, x + width)
+          maxY = Math.max(maxY, y + height)
+        }
+        if (!Number.isFinite(minX)) return
+        rect = {
+          x: Math.round(minX - ZONE_PAD),
+          y: Math.round(minY - ZONE_PAD - ZONE_HEADER_H),
+          w: Math.max(ZONE_MIN_W, Math.round(maxX - minX + ZONE_PAD * 2)),
+          h: Math.max(ZONE_MIN_H, Math.round(maxY - minY + ZONE_PAD * 2 + ZONE_HEADER_H)),
+        }
+      } else {
+        const center = viewCenterWorld()
+        rect = { x: Math.round(center.x - 260), y: Math.round(center.y - 170), w: 520, h: 340 }
+      }
+      const number = nextZoneNumber(currentZones)
+      const zone = {
+        id: nextZoneId(currentZones),
+        label: t('cvZoneName', { n: number }),
+        x: rect.x,
+        y: rect.y,
+        w: rect.w,
+        h: rect.h,
+        color: ZONE_COLOR_CYCLE[currentZones.length % ZONE_COLOR_CYCLE.length],
+      }
+      emitWorkflow(Object.assign({}, current, { zones: currentZones.concat([zone]) }))
+      setSel({ kind: 'zone', id: zone.id })
+      setMulti([])
+      notifySelect(null)
+      focusStage()
+    }
+
+    function cycleZoneColor(zoneId) {
+      const p = propsRef.current
+      if (!p || p.readOnly) return
+      const current = workflowBase()
+      const currentZones = Array.isArray(current.zones) ? current.zones : []
+      let changed = false
+      const nextZones = currentZones.map((zone) => {
+        if (!zone || zone.id !== zoneId) return zone
+        changed = true
+        return Object.assign({}, zone, { color: nextZoneColor(zone.color) })
+      })
+      if (changed) emitWorkflow(Object.assign({}, current, { zones: nextZones }))
+    }
+
+    function renameZone(zoneId, label) {
+      if (readOnly) return
+      const nextLabel = String(label == null ? '' : label).trim().slice(0, 80)
+      const current = workflowBase()
+      const currentZones = Array.isArray(current.zones) ? current.zones : []
+      let changed = false
+      const nextZones = currentZones.map((zone) => {
+        if (!zone || zone.id !== zoneId) return zone
+        if ((zone.label || '') === nextLabel) return zone
+        changed = true
+        return Object.assign({}, zone, { label: nextLabel })
+      })
+      if (changed) emitWorkflow(Object.assign({}, current, { zones: nextZones }))
     }
 
     function showTempPath(from, to, invalid) {
@@ -2152,7 +2535,8 @@
           })
           if (changed) emitWorkflow(Object.assign({}, currentWf, { nodes: nextNodes }))
         }
-        const primary = (selRef.current && selRef.current.id) || drag.ids[0]
+        const activeSel = selRef.current
+        const primary = (activeSel && activeSel.kind === 'node' && activeSel.id) || drag.ids[0]
         if (primary) notifySelect(primary)
       }
       function onCancel() {
@@ -2164,6 +2548,260 @@
         for (const id of drag.ids) {
           const el = nodeElsRef.current[id]
           if (el) el.style.transform = ''
+        }
+      }
+      clearGestureCleanup()
+      gestureCleanupRef.current = cleanup
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onCancel)
+    }
+
+    /* -------------------------------------------- zone gestures (§14.1) */
+
+    /** Live-shift a set of nodes (DOM transforms) and their edge paths. */
+    function applyLiveNodeShift(drag) {
+      const screenDx = drag.dx
+      const screenDy = drag.dy
+      for (const id of drag.ids) {
+        const el = nodeElsRef.current[id]
+        if (el) el.style.transform = 'translate3d(' + screenDx + 'px,' + screenDy + 'px,0)'
+      }
+      if (!drag.ids.length) return
+      const worldDx = screenDx / drag.scale
+      const worldDy = screenDy / drag.scale
+      const idSet = new Set(drag.ids)
+      for (const edge of drag.edges) {
+        if (!edge || !edge.from || !edge.to) continue
+        const fromMoved = idSet.has(edge.from.node)
+        const toMoved = idSet.has(edge.to.node)
+        if (!fromMoved && !toMoved) continue
+        const fromBase = drag.nodesById[edge.from.node]
+        const toBase = drag.nodesById[edge.to.node]
+        if (!fromBase || !toBase) continue
+        const fromNode = fromMoved
+          ? Object.assign({}, fromBase, { x: (Number(fromBase.x) || 0) + worldDx, y: (Number(fromBase.y) || 0) + worldDy })
+          : fromBase
+        const toNode = toMoved
+          ? Object.assign({}, toBase, { x: (Number(toBase.x) || 0) + worldDx, y: (Number(toBase.y) || 0) + worldDy })
+          : toBase
+        const from = portPosition(fromNode, drag.defsById[fromNode.type], 'out', edge.from.port)
+        const to = portPosition(toNode, drag.defsById[toNode.type], 'in', edge.to.port)
+        const path = edgePath(from, to)
+        const refs = edgeElsRef.current[edge.id]
+        if (refs) {
+          if (refs.main) refs.main.setAttribute('d', path)
+          if (refs.hit) refs.hit.setAttribute('d', path)
+        }
+      }
+    }
+
+    function resetZoneDragTransforms(drag) {
+      const zoneEl = zoneElsRef.current[drag.zoneId]
+      if (zoneEl) zoneEl.style.transform = ''
+      for (const id of drag.ids) {
+        const el = nodeElsRef.current[id]
+        if (el) el.style.transform = ''
+      }
+    }
+
+    function startZoneDrag(event, zone) {
+      closePicker()
+      const p = propsRef.current
+      if (!p || !zone || event.button !== 0) return
+      if (connectRef.current) return
+      event.stopPropagation()
+      if (spaceRef.current) {
+        startPan(event, false)
+        return
+      }
+      event.preventDefault()
+      selectZone(zone.id)
+      focusStage()
+      if (p.readOnly) return
+      const current = wfRef.current
+      const currentNodes = Array.isArray(current.nodes) ? current.nodes : []
+      const currentEdges = Array.isArray(current.edges) ? current.edges : []
+      const byId = {}
+      for (const node of currentNodes) if (node && node.id) byId[node.id] = node
+      const rect = zoneRect(zone)
+      const measured = measuredSizes()
+      const ids = []
+      const positions = {}
+      for (const node of currentNodes) {
+        if (!node || !node.id || !byId[node.id]) continue
+        const def = defsByIdRef.current[node.type]
+        const size = measured[node.id]
+        const width = size && isFiniteNumber(size.w) ? size.w : nodeWidth(def)
+        const height = size && isFiniteNumber(size.h) ? size.h : estimateNodeHeight(def)
+        const x = isFiniteNumber(node.x) ? node.x : 0
+        const y = isFiniteNumber(node.y) ? node.y : 0
+        const cx = x + width / 2
+        const cy = y + height / 2
+        if (cx < rect.x || cx > rect.x + rect.w || cy < rect.y || cy > rect.y + rect.h) continue
+        ids.push(node.id)
+        positions[node.id] = { x: x, y: y }
+      }
+      const drag = {
+        zoneId: zone.id,
+        zoneX: rect.x,
+        zoneY: rect.y,
+        ids: ids,
+        positions: positions,
+        startX: event.clientX,
+        startY: event.clientY,
+        scale: viewRef.current.scale,
+        moved: false,
+        dx: 0,
+        dy: 0,
+        frame: 0,
+        wf: current,
+        nodesById: byId,
+        defsById: defsByIdRef.current,
+        edges: currentEdges,
+      }
+      function applyDrag() {
+        if (!drag.moved) return
+        const zoneEl = zoneElsRef.current[drag.zoneId]
+        if (zoneEl) zoneEl.style.transform = 'translate3d(' + drag.dx + 'px,' + drag.dy + 'px,0)'
+        applyLiveNodeShift(drag)
+      }
+      function cleanup() {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onCancel)
+        if (drag.frame) {
+          CAF(drag.frame)
+          drag.frame = 0
+        }
+      }
+      function onMove(moveEvent) {
+        const dx = moveEvent.clientX - drag.startX
+        const dy = moveEvent.clientY - drag.startY
+        if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return
+        drag.moved = true
+        drag.dx = dx
+        drag.dy = dy
+        if (drag.frame) return
+        drag.frame = RAF(function onZoneDragFrame() {
+          drag.frame = 0
+          applyDrag()
+        })
+      }
+      function onUp() {
+        clearGestureCleanup()
+        if (!drag.moved) return
+        if (drag.frame) {
+          CAF(drag.frame)
+          drag.frame = 0
+        }
+        const worldDx = Math.round(drag.dx / drag.scale)
+        const worldDy = Math.round(drag.dy / drag.scale)
+        resetZoneDragTransforms(drag)
+        if (!worldDx && !worldDy) return
+        const currentWf = wfRef.current
+        const currentNodesNow = Array.isArray(currentWf.nodes) ? currentWf.nodes : []
+        const currentZones = Array.isArray(currentWf.zones) ? currentWf.zones : []
+        const nextNodes = currentNodesNow.map((node) => {
+          if (!node || !drag.positions[node.id]) return node
+          return Object.assign({}, node, {
+            x: Math.round(drag.positions[node.id].x + worldDx),
+            y: Math.round(drag.positions[node.id].y + worldDy),
+          })
+        })
+        const nextZones = currentZones.map((item) =>
+          item && item.id === drag.zoneId
+            ? Object.assign({}, item, {
+                x: Math.round(drag.zoneX + worldDx),
+                y: Math.round(drag.zoneY + worldDy),
+              })
+            : item,
+        )
+        emitWorkflow(Object.assign({}, currentWf, { nodes: nextNodes, zones: nextZones }))
+      }
+      function onCancel() {
+        clearGestureCleanup()
+        resetZoneDragTransforms(drag)
+      }
+      clearGestureCleanup()
+      gestureCleanupRef.current = cleanup
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onCancel)
+    }
+
+    function startZoneResize(event, zone) {
+      closePicker()
+      const p = propsRef.current
+      if (!p || !zone || event.button !== 0) return
+      if (connectRef.current) return
+      event.stopPropagation()
+      event.preventDefault()
+      selectZone(zone.id)
+      focusStage()
+      if (p.readOnly) return
+      const rect = zoneRect(zone)
+      const startW = rect.w
+      const startH = rect.h
+      const startX = event.clientX
+      const startY = event.clientY
+      const scale = viewRef.current.scale
+      let width = startW
+      let height = startH
+      let moved = false
+      let frame = 0
+      function applyResize() {
+        const zoneEl = zoneElsRef.current[zone.id]
+        if (!zoneEl) return
+        zoneEl.style.width = width + 'px'
+        zoneEl.style.height = height + 'px'
+      }
+      function cleanup() {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onCancel)
+        if (frame) {
+          CAF(frame)
+          frame = 0
+        }
+      }
+      function onMove(moveEvent) {
+        const worldDx = (moveEvent.clientX - startX) / scale
+        const worldDy = (moveEvent.clientY - startY) / scale
+        if (!moved && Math.abs(moveEvent.clientX - startX) + Math.abs(moveEvent.clientY - startY) < 2) return
+        moved = true
+        width = Math.max(ZONE_MIN_W, Math.round(startW + worldDx))
+        height = Math.max(ZONE_MIN_H, Math.round(startH + worldDy))
+        if (frame) return
+        frame = RAF(function onZoneResizeFrame() {
+          frame = 0
+          applyResize()
+        })
+      }
+      function onUp() {
+        clearGestureCleanup()
+        if (!moved) return
+        if (frame) {
+          CAF(frame)
+          frame = 0
+        }
+        const currentWf = wfRef.current
+        const currentZones = Array.isArray(currentWf.zones) ? currentWf.zones : []
+        let changed = false
+        const nextZones = currentZones.map((item) => {
+          if (!item || item.id !== zone.id) return item
+          if (item.w === width && item.h === height) return item
+          changed = true
+          return Object.assign({}, item, { w: width, h: height })
+        })
+        if (changed) emitWorkflow(Object.assign({}, currentWf, { zones: nextZones }))
+      }
+      function onCancel() {
+        clearGestureCleanup()
+        const zoneEl = zoneElsRef.current[zone.id]
+        if (zoneEl) {
+          zoneEl.style.width = startW + 'px'
+          zoneEl.style.height = startH + 'px'
         }
       }
       clearGestureCleanup()
@@ -2313,7 +2951,7 @@
       const el = doc.elementFromPoint(clientX, clientY)
       if (!el) return null
       if (!stage.contains(el)) return null
-      if (el.closest && el.closest('[data-node-id],[data-port-node],.vcg-cv-minimap,.vcg-cv-quick-btn,.vcg-cv-picker')) return null
+      if (el.closest && el.closest('[data-node-id],[data-port-node],.vcg-cv-minimap,.vcg-cv-quick-btn,.vcg-cv-picker,.vcg-cv-zone-head,.vcg-cv-zone-handle')) return null
       const screen = { x: clientX - rect.left, y: clientY - rect.top }
       return { screen: screen, world: canvasToWorld(screen, viewRef.current) }
     }
@@ -2515,6 +3153,31 @@
       entry[kind] = el || null
     }
 
+    function setZoneEl(id, el) {
+      const map = zoneElsRef.current
+      if (el) map[id] = el
+      else delete map[id]
+    }
+
+    function renderZones() {
+      if (!zones.length) return null
+      return zones.map((zone) => {
+        if (!zone || !zone.id) return null
+        return h(ZoneBox, {
+          key: zone.id,
+          zone: zone,
+          selected: sel.kind === 'zone' && sel.id === zone.id,
+          readOnly: readOnly,
+          onHeadPointerDown: (event, item) => startZoneDrag(event, item),
+          onHandlePointerDown: (event, item) => startZoneResize(event, item),
+          onCycleColor: (id) => cycleZoneColor(id),
+          onRename: (id, label) => renameZone(id, label),
+          onDelete: (id) => removeZone(id),
+          registerEl: (id, el) => setZoneEl(id, el),
+        })
+      })
+    }
+
     function renderEdges() {
       const items = []
       for (const edge of edges) {
@@ -2675,7 +3338,12 @@
           h(Glyph, { name: 'panel', size: 15 }),
         ),
         h('div', { className: 'vcg-cv-tb-title', title: workflowName }, workflowName),
-        h('span', { className: 'vcg-cv-tb-meta' }, nodes.length + ' ' + t('cvNodes') + ' · ' + edges.length + ' ' + t('cvEdges')),
+        h(
+          TBtn,
+          { title: t('cvZoneNew') + ' · ' + t('cvZoneHint'), onClick: createZone, disabled: readOnly },
+          h(Glyph, { name: 'grid', size: 14 }),
+          h('span', { className: 'vcg-cv-tb-label' }, t('cvZone')),
+        ),
         running && runProgressLabel
           ? h('span', { className: 'vcg-cv-tb-run', title: runProgressLabel }, runProgressLabel)
           : null,
@@ -2683,13 +3351,13 @@
         props.headerExtra || null,
         running
           ? props.onStop
-            ? h(Button, { variant: 'danger', size: 'sm', icon: 'stop', onClick: props.onStop }, t('stop'))
-            : h(Button, { size: 'sm', icon: 'stop', disabled: true }, t('cvRunning'))
+            ? h(Button, { variant: 'danger', size: 'md', icon: 'stop', onClick: props.onStop }, t('stop'))
+            : h(Button, { size: 'md', icon: 'stop', disabled: true }, t('cvRunning'))
           : h(
               Button,
               {
                 variant: 'primary',
-                size: 'sm',
+                size: 'md',
                 icon: 'play',
                 disabled: !props.onRunAll || running,
                 onClick: () => {
@@ -2702,7 +3370,7 @@
         h(
           Button,
           {
-            size: 'sm',
+            size: 'md',
             icon: debugBusy ? undefined : 'check',
             title: t('cvDebugHint'),
             disabled: running || debugBusy || typeof props.onDebugRun !== 'function',
@@ -2712,24 +3380,6 @@
             },
           },
           debugBusy ? t('cvDebugBusy') : t('cvDebugRun'),
-        ),
-        h('span', { className: 'vcg-cv-tb-sep' }),
-        h(
-          'div',
-          { className: 'vcg-cv-seg', title: t('cvEngineHint') },
-          engineModes.map((mode) =>
-            h(
-              'button',
-              {
-                key: mode.id,
-                type: 'button',
-                className: 'vcg-cv-seg-btn' + (activeEngine === mode.id ? ' vcg-cv-seg-btn-active' : ''),
-                disabled: readOnly,
-                onClick: () => changeEngineMode(mode.id),
-              },
-              mode.label,
-            ),
-          ),
         ),
         h('span', { className: 'vcg-cv-tb-sep' }),
         h(
@@ -2744,16 +3394,102 @@
           h(Glyph, { name: 'zoomin', size: 14 }),
         ),
         h(TBtn, { title: t('cvFit'), onClick: fitAll }, h(Glyph, { name: 'fit', size: 14 })),
-        h(TBtn, { title: t('cvMinimap'), active: miniOpen, onClick: () => setMiniOpen(!miniOpen) }, h(Glyph, { name: 'grid', size: 14 })),
+        h(
+          'div',
+          { className: 'vcg-cv-more-wrap', ref: moreAnchorRef },
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'vcg-cv-more-btn' + (moreOpen ? ' vcg-cv-more-btn-active' : ''),
+              title: t('cvMore'),
+              'aria-label': t('cvMore'),
+              'aria-haspopup': 'menu',
+              'aria-expanded': moreOpen ? 'true' : 'false',
+              onPointerDown: stopEvent,
+              onClick: () => setMoreOpen(!moreOpen),
+            },
+            h('span', null, t('cvMore')),
+            h(Glyph, { name: 'chevron', size: 11, className: 'vcg-cv-more-caret' }),
+          ),
+          renderMoreMenu(engineModes, activeEngine),
+        ),
+      )
+    }
+
+    /** Compact overflow menu (§14.2): engine mode, minimap, graph stats, output dir, read-only. */
+    function renderMoreMenu(engineModes, activeEngine) {
+      if (!moreOpen) return null
+      return h(
+        'div',
+        {
+          className: 'vcg-cv-more-menu',
+          role: 'menu',
+          onPointerDown: stopEvent,
+          onContextMenu: (event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          },
+        },
+        h(
+          'div',
+          { className: 'vcg-cv-more-row' },
+          h('span', { className: 'vcg-cv-more-label' }, t('cvMoreEngine')),
+          h(
+            'div',
+            { className: 'vcg-cv-seg', title: t('cvEngineHint') },
+            engineModes.map((mode) =>
+              h(
+                'button',
+                {
+                  key: mode.id,
+                  type: 'button',
+                  className: 'vcg-cv-seg-btn' + (activeEngine === mode.id ? ' vcg-cv-seg-btn-active' : ''),
+                  disabled: readOnly,
+                  onClick: () => changeEngineMode(mode.id),
+                },
+                mode.label,
+              ),
+            ),
+          ),
+        ),
+        h('div', { className: 'vcg-cv-more-sep' }),
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'vcg-cv-more-item',
+            role: 'menuitemcheckbox',
+            'aria-checked': miniOpen ? 'true' : 'false',
+            onClick: () => setMiniOpen(!miniOpen),
+          },
+          h(Glyph, { name: 'grid', size: 13 }),
+          h('span', { className: 'vcg-cv-more-item-label' }, t('cvMinimap')),
+          miniOpen ? h(Glyph, { name: 'check', size: 13, style: { color: 'var(--dsw-alias-brand-primary)', flex: 'none' } }) : null,
+        ),
+        h('div', { className: 'vcg-cv-more-sep' }),
+        h(
+          'div',
+          { className: 'vcg-cv-more-row' },
+          h('span', { className: 'vcg-cv-more-label' }, t('cvGraphStats')),
+          h('span', { className: 'vcg-cv-more-value' }, nodes.length + ' ' + t('cvNodes') + ' · ' + edges.length + ' ' + t('cvEdges')),
+        ),
         props.outputDirHint
           ? h(
-              'span',
-              { className: 'vcg-cv-outdir', title: props.outputDirHint },
-              h(Glyph, { name: 'folder', size: 12 }),
-              h('span', { className: 'vcg-cv-outdir-text' }, props.outputDirHint),
+              'div',
+              { className: 'vcg-cv-more-outdir', title: props.outputDirHint },
+              h(Glyph, { name: 'folder', size: 12, style: { flex: 'none', marginTop: 1 } }),
+              h('span', null, props.outputDirHint),
             )
           : null,
-        readOnly ? h('span', { className: 'vcg-cv-readonly' }, t('cvReadOnly')) : null,
+        readOnly
+          ? h(
+              'div',
+              { className: 'vcg-cv-more-readonly' },
+              h(Glyph, { name: 'warning', size: 12 }),
+              h('span', null, t('cvReadOnly')),
+            )
+          : null,
       )
     }
 
@@ -2807,9 +3543,9 @@
 
     /* -------------------------------------------------------------- minimap */
     function renderMinimap() {
-      if (!miniOpen || !nodes.length) return null
+      if (!miniOpen || (!nodes.length && !zones.length)) return null
       const defs = defsByIdRef.current || {}
-      const bounds = nodesBounds(nodes, defs, null)
+      const bounds = worldBounds(nodes, zones, defs, null)
       if (!bounds) return null
       const pad = 8
       const scale = Math.min((MINI_W - pad * 2) / Math.max(bounds.width, 60), (MINI_H - pad * 2) / Math.max(bounds.height, 60))
@@ -2837,6 +3573,21 @@
         h(
           'svg',
           { width: MINI_W, height: MINI_H },
+          zones.map((zone) => {
+            if (!zone || !zone.id) return null
+            const rect = zoneRect(zone)
+            const colorVar = zoneColorVar(zone.color)
+            return h('rect', {
+              key: 'zone-' + zone.id,
+              className: 'vcg-cv-mini-zone',
+              x: rect.x * scale + ox,
+              y: rect.y * scale + oy,
+              width: Math.max(2, rect.w * scale),
+              height: Math.max(2, rect.h * scale),
+              rx: 2,
+              style: { fill: colorVar, fillOpacity: 0.1, stroke: colorVar, strokeOpacity: 0.4 },
+            })
+          }),
           nodes.map((node) => {
             if (!node || !node.id) return null
             const def = resolveDef(node.type)
@@ -3075,10 +3826,47 @@
       [],
     )
 
+    /* close the toolbar "more" menu on outside pointerdown / Esc (§14.2) */
+    React.useEffect(() => {
+      if (!moreOpen) return undefined
+      function onDocPointerDown(event) {
+        const el = moreAnchorRef.current
+        if (el && event.target && el.contains(event.target)) return
+        setMoreOpen(false)
+      }
+      function onDocKeyDown(event) {
+        if (event.key !== 'Escape') return
+        setMoreOpen(false)
+        event.stopPropagation()
+      }
+      document.addEventListener('pointerdown', onDocPointerDown, true)
+      document.addEventListener('keydown', onDocKeyDown, true)
+      return () => {
+        document.removeEventListener('pointerdown', onDocPointerDown, true)
+        document.removeEventListener('keydown', onDocKeyDown, true)
+      }
+    }, [moreOpen])
+
+    /* drop the local zone selection when the workflow no longer has that zone */
+    React.useEffect(() => {
+      const ids = new Set()
+      for (const zone of zones) if (zone && zone.id) ids.add(zone.id)
+      const previous = prevZoneIdsRef.current
+      prevZoneIdsRef.current = ids
+      const current = selRef.current
+      if (!current || current.kind !== 'zone') return
+      // Only react to an actual removal (not to a host render lagging one emit behind).
+      if (!previous || !previous.has(current.id) || ids.has(current.id)) return
+      setSel({ kind: null, id: null })
+      setMulti([])
+    })
+
     /* sync controlled selectedId */
     React.useEffect(() => {
       const id = props.selectedId
       const current = selRef.current || { kind: null, id: null }
+      // Zone selection is canvas-local: an empty host selection must not clear it.
+      if (current.kind === 'zone' && id == null) return
       if (id == null && current.id == null) return
       if (id != null && id === current.id) return
       if (id == null) {
@@ -3178,6 +3966,7 @@
       h(
         'div',
         { className: 'vcg-cv-world', ref: worldRef, style: worldStyle },
+        renderZones(),
         renderEdges(),
         nodes.map(renderNodeCard),
       ),

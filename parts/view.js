@@ -193,6 +193,7 @@
     const [loadError, setLoadError] = React.useState('')
     const [runError, setRunError] = React.useState('')
     const [notice, setNotice] = React.useState('')
+    const [aiOpen, setAiOpen] = React.useState(false)
     const [ready, setReady] = React.useState(false)
     const [lastSaved, setLastSaved] = React.useState('')
     const runToken = React.useRef(0)
@@ -449,7 +450,6 @@
           store.state && store.state.defaults && store.state.defaults.imageModel
             ? h(Badge, null, store.state.defaults.imageModel)
             : null,
-          h('span', { className: 'vcg-subtitle' }, outputDirHint),
           h('span', { style: { flex: 1 } }),
           saving ? h('span', { className: 'vcg-subtitle' }, '保存中…') : lastSaved ? h('span', { className: 'vcg-subtitle' }, '已保存 ' + V.formatTime(lastSaved)) : null,
           h(
@@ -459,7 +459,6 @@
           ),
           h(Button, { size: 'sm', variant: 'ghost', icon: 'back', onClick: openChat }, '切换到对话'),
         ),
-        h(AiBuilder, { workflow, onBuilt: (next) => onChange(next), disabled: running }),
       ),
       runError ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'error', title: '运行失败', action: h(IconButton, { label: '关闭', onClick: () => setRunError('') }, h(Glyph, { name: 'close', size: 14 })) }, runError)) : null,
       notice ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'info' }, notice)) : null,
@@ -477,6 +476,22 @@
             : null,
         ],
       }, h(V.ui.DebugReport, { report: debugReport })),
+      /* AI 建流：从 Canvas 工具栏的 headerExtra 按钮打开，复用 AiBuilder 表单。 */
+      h(
+        Modal,
+        {
+          open: aiOpen,
+          title: 'AI 建流',
+          onClose: () => setAiOpen(false),
+          width: 'min(720px,100%)',
+        },
+        h(AiBuilder, {
+          workflow,
+          /* 生成成功只应用到画布，弹窗保持打开以展示 AI 回复/建议，由用户关闭。 */
+          onBuilt: (next) => onChange(next),
+          disabled: running,
+        }),
+      ),
       h(
         'div',
         { className: 'vcg-view-canvas' },
@@ -498,6 +513,11 @@
                 onStop: stop,
                 running,
                 readOnly: false,
+                headerExtra: h(
+                  Button,
+                  { size: 'sm', variant: 'ghost', icon: 'sparkles', onClick: () => setAiOpen(true), title: '用一句话让 AI 生成/改写工作流' },
+                  'AI 建流',
+                ),
                 outputDirHint,
               })
             : null,
@@ -507,13 +527,18 @@
 
   const VIEW_CSS = `
 .vcg-view{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-.vcg-view-top{display:flex;flex-direction:column;gap:8px;padding:10px 12px 8px;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-base);flex:none}
-.vcg-view-topbar{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
-.vcg-view-brand{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap}
-.vcg-view-aibuild{display:flex;flex-direction:column;gap:2px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:10px;padding:8px 10px}
+.vcg-view-top{display:flex;align-items:center;gap:8px;padding:8px 12px 6px;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-base);flex:none;min-width:0}
+.vcg-view-topbar{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:nowrap;overflow:hidden;width:100%}
+.vcg-view-brand{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap;flex:none}
+.vcg-view-aibuild{display:flex;flex-direction:column;gap:8px;min-width:0}
 .vcg-view-aibuild-icon{color:var(--dsw-alias-brand-primary);display:inline-flex}
 .vcg-view-canvas{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.vcg-view-canvas > *{flex:1;min-width:0;min-height:0}
 .vcg-view-full{position:fixed;inset:0;z-index:80;background:var(--dsw-alias-bg-base);height:100vh;width:100vw;box-shadow:0 0 0 1px var(--dsw-alias-border-l2)}
+@media (max-width:760px){
+  .vcg-view-top{padding:6px 10px 4px}
+  .vcg-view-topbar{flex-wrap:wrap}
+}
 `
 
   V.ChatCanvasView = ChatCanvasView

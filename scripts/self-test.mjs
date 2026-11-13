@@ -237,6 +237,25 @@ ok(typesCompatible('image', 'latent') === false, '§11.2 image→latent 禁止')
     '边引用不存在的节点被拒绝',
     '不存在的节点',
   )
+  ok(Array.isArray(base.zones) && base.zones.length === 0, '§14.1 emptyWorkflow 含 zones 空数组')
+  const zoned = validateWorkflowShape({
+    nodes: [],
+    edges: [],
+    zones: [
+      { id: 'z1', label: '角色', x: 10, y: 20, w: 50, h: 60, color: 'violet' },
+      { id: 'z1', label: 'dup', x: 0, y: 0, w: 300, h: 300 },
+      { id: 'z2', x: 0, y: 0, w: 400, h: 300, color: 'nope' },
+      { label: 'no-id', x: 0, y: 0, w: 300, h: 300 },
+      'bad',
+      { id: 'z3', x: 'x', y: 0, w: 300, h: 300 },
+    ],
+  })
+  equal(zoned.zones.length, 2, '§14.1 非法分区被丢弃、id 去重')
+  equal(zoned.zones[0], { id: 'z1', label: '角色', x: 10, y: 20, w: 160, h: 100, color: 'violet' }, '§14.1 分区尺寸 clamp 与字段保留')
+  equal(zoned.zones[1].label, '分区 2', '§14.1 分区缺省命名')
+  equal(zoned.zones[1].color, '', '§14.1 非法颜色回退空')
+  const roundTrip = validateWorkflowShape(zoned, { where: '分区往返' })
+  equal(roundTrip.zones, zoned.zones, '§14.1 分区规范化后可重复往返')
 }
 
 /* -------------------------------------------- §11.1 optional / required ports */
@@ -575,10 +594,14 @@ ok(typesCompatible('image', 'latent') === false, '§11.2 image→latent 禁止')
   equal(classifyModel('qwen-image-3.0-pro'), 'image', '模型分类 qwen-image → image')
   equal(classifyModel('wan3.0-video'), 'video', '模型分类 wan3.0-video → video')
   equal(classifyModel('qwen3.8-max'), 'text', '模型分类 qwen3.8-max → text')
-  const catalog = catalogModels(['wan2.7-image', 'wan3.0-video', 'qwen3.8-max', 'wan2.7-image'])
+  equal(classifyModel('qwen-audio-3.0-tts-plus'), 'audio', '§14.3 模型分类 qwen-audio → audio')
+  equal(classifyModel('qwen-audio-3.0-asr-flash'), 'audio', '§14.3 模型分类 asr → audio')
+  const catalog = catalogModels(['wan2.7-image', 'wan3.0-video', 'qwen3.8-max', 'wan2.7-image', 'qwen-audio-3.0-tts-plus'])
   equal(catalog.image, ['wan2.7-image'], '模型目录去重')
+  equal(catalog.audio, ['qwen-audio-3.0-tts-plus'], '§14.3 模型目录 audio 分桶')
+  equal(catalog.all, ['wan2.7-image', 'wan3.0-video', 'qwen3.8-max', 'qwen-audio-3.0-tts-plus'], '§14.3 模型目录 all 保留全部 id')
   const merged = mergeCatalogs({ image: ['a'] }, { image: ['a', 'b'], text: ['t'] })
-  equal(merged, { image: ['a', 'b'], video: [], text: ['t'] }, '模型目录合并去重')
+  equal(merged, { image: ['a', 'b'], video: [], text: ['t'], audio: [], all: [] }, '模型目录合并去重')
 
   equal(normalizeSize('1280x720'), '1280*720', '§9 尺寸 1280x720 → 1280*720')
   equal(normalizeSize('1024*1024'), '1024*1024', '§9 尺寸保持 W*H')

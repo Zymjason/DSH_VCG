@@ -153,6 +153,18 @@
       setCapText: '文本',
       setDetectingTip: '正在调用宿主 LLM 服务检测可用 API…',
       setNoModels: '没有可用模型',
+      setAvailableModels: '可用模型 {count} 个',
+      setDetectModelsOk: '已从 /models 读取 {count} 个模型',
+      setDetectModelsFail: '未读取到模型',
+      setDetectSource: '来源：{source}',
+      setDetectSourceModels: '/models 接口',
+      setDetectSourceHost: '宿主 LLM 配置',
+      setDetectSourceStored: '上次检测结果',
+      setModelsExpand: '展开全部模型',
+      setModelsCollapse: '收起模型列表',
+      setAutoModels: '自动读取的可用模型',
+      setAutoModelsEmpty: '尚未自动读取到模型：请确认 Provider 的 /models 接口可用且已填写 API Key，然后点击「自动检测」。',
+      setAutoModelsHint: '只读：包含语音等非生成类模型，仅用于查看，不会改动上方可编辑的模型列表。',
       setProviderDisabled: '默认 provider 已被禁用；运行工作流前请启用它或切换到其他默认 provider。',
     },
     {
@@ -279,6 +291,18 @@
       setCapText: 'Text',
       setDetectingTip: 'Asking the Host LLM service for available APIs…',
       setNoModels: 'No models available',
+      setAvailableModels: 'Available models: {count}',
+      setDetectModelsOk: 'Read {count} models from /models',
+      setDetectModelsFail: 'No models read',
+      setDetectSource: 'Source: {source}',
+      setDetectSourceModels: '/models endpoint',
+      setDetectSourceHost: 'Host LLM config',
+      setDetectSourceStored: 'Last detection',
+      setModelsExpand: 'Show all models',
+      setModelsCollapse: 'Hide model list',
+      setAutoModels: 'Auto-read available models',
+      setAutoModelsEmpty: 'No models read yet: check the provider /models endpoint and API key, then run auto-detect.',
+      setAutoModelsHint: 'Read-only: includes non-generation models (e.g. audio); viewing only, the editable model lists above are unchanged.',
       setProviderDisabled: 'The default provider is disabled; enable it or pick another default provider before running workflows.',
     },
   )
@@ -312,15 +336,38 @@
   }
 
   function normalizeModels(models) {
-    const out = { image: [], video: [], text: [] }
+    const out = { image: [], video: [], text: [], audio: [], all: [] }
     if (Array.isArray(models)) {
       out.image = models.map(String)
+      out.all = unique(out.image)
       return out
     }
     if (models && typeof models === 'object') {
       for (const cap of CAPS) out[cap] = asArray(models[cap]).map(String)
+      out.audio = asArray(models.audio).map(String)
+      out.all = unique(asArray(models.all).map(String))
+      if (out.all.length === 0) out.all = unique([].concat(out.image, out.video, out.text, out.audio))
+      else out.all = unique(out.all.concat(out.audio))
     }
     return out
+  }
+
+  /** Flatten a `test.models` value (array or `{image,video,text,audio,all}` object). */
+  function flattenModelIds(value) {
+    const collect = (list) =>
+      asArray(list)
+        .map((model) => (typeof model === 'string' ? model : model && (model.id || model.name)))
+        .filter(Boolean)
+        .map(String)
+    if (Array.isArray(value)) return unique(collect(value))
+    if (!value || typeof value !== 'object') return []
+    const order = ['image', 'video', 'text', 'audio', 'all']
+    const out = []
+    for (const key of order) out.push(...collect(value[key]))
+    for (const [key, item] of Object.entries(value)) {
+      if (order.indexOf(key) === -1) out.push(...collect(item))
+    }
+    return unique(out)
   }
 
   function kindOptions(current) {
@@ -355,6 +402,8 @@
       enabled: provider.enabled !== false,
       detectedFrom: provider.detectedFrom || '',
       modelText: { image: models.image.join(', '), video: models.video.join(', '), text: models.text.join(', ') },
+      /* Read-only list auto-read from the provider `/models` endpoint (§14.3). */
+      autoModels: models.all,
     }
   }
 
@@ -415,6 +464,10 @@
       providers: form.providers.map((provider) => {
         const models = {}
         for (const cap of CAPS) models[cap] = splitList(provider.modelText[cap])
+        // Keep the auto-read catalogue across page saves; the three editable
+        // capability lists above are still replaced verbatim.
+        const autoModels = unique(asArray(provider.autoModels).map(String))
+        if (autoModels.length > 0) models.all = autoModels
         const item = {
           id: provider.id,
           label: String(provider.label || '').trim() || provider.id,
@@ -530,8 +583,26 @@
     )
   }
 
-  function ProviderCard({ provider, onChange, onModelText, onRemove }) {
+  function ProviderCard({ provider, onChange, onModelText, onRemove, discoveredModels, discovery }) {
     const configured = provider.apiKeyConfigured
+    // Read-only "auto-read" catalogue: persisted `models.all` plus the latest
+    // `/models` detection result (§14.3).
+    const autoRead = unique(asArray(provider.autoModels).concat(asArray(discoveredModels)).map(String))
+    const discoveryOk = Boolean(discovery && discovery.ok)
+    // Entries outside the three editable lists can only come from `/models`.
+    const editable = unique(
+      []
+        .concat(splitList(provider.modelText.image), splitList(provider.modelText.video), splitList(provider.modelText.text)),
+    )
+    const autoOnly = autoRead.filter((model) => editable.indexOf(model) === -1)
+    const sourceLabel = discoveryOk
+      ? t('setDetectSourceModels')
+      : provider.detectedFrom === 'global'
+        ? t('setDetectSourceHost')
+        : autoOnly.length > 0
+          ? t('setDetectSourceStored')
+          : ''
+    const showAuto = autoOnly.length > 0 || discoveryOk || provider.detectedFrom === 'global' || Boolean(discovery)
     return h(
       'div',
       { className: 'vcg-set-provider' },
@@ -624,6 +695,22 @@
           ),
         ),
       ),
+      showAuto
+        ? h(
+            'div',
+            { className: 'vcg-set-auto-models' },
+            h(
+              'div',
+              { className: 'vcg-row', style: { flexWrap: 'wrap', justifyContent: 'space-between' } },
+              h('span', { className: 'vcg-label' }, t('setAutoModels')),
+              sourceLabel !== '' ? h(Badge, null, t('setDetectSource', { source: sourceLabel })) : null,
+            ),
+            autoRead.length > 0
+              ? h('div', { className: 'vcg-set-model-list vcg-set-mono' }, autoRead.join(' · '))
+              : h('div', { className: 'vcg-hint' }, t('setAutoModelsEmpty')),
+            h('div', { className: 'vcg-hint' }, t('setAutoModelsHint')),
+          )
+        : null,
     )
   }
 
@@ -631,6 +718,11 @@
     const data = detect || {}
     const candidates = asArray(data.candidates)
     const globalModels = data.globalModels && typeof data.globalModels === 'object' ? data.globalModels : {}
+    const allModels = data.allModels && typeof data.allModels === 'object' ? data.allModels : {}
+    const discoveredMap = data.discovered && typeof data.discovered === 'object' ? data.discovered : {}
+    const [expanded, setExpanded] = React.useState({})
+    const toggleAll = (id) =>
+      setExpanded((previous) => ({ ...previous, [id]: !previous[id] }))
     return h(
       'div',
       { className: 'vcg-set-detect' },
@@ -654,10 +746,24 @@
         ? h(
             'div',
             { className: 'vcg-col' },
-            candidates.map((candidate, index) =>
-              h(
+            candidates.map((candidate, index) => {
+              const candidateId = candidate && candidate.id ? String(candidate.id) : ''
+              const discovered = candidateId !== '' ? discoveredMap[candidateId] : undefined
+              const available = unique(
+                asArray(candidateId !== '' ? allModels[candidateId] : [])
+                  .concat(asArray(candidate && candidate.models && candidate.models.all))
+                  .map(String),
+              )
+              const expandedNow = candidateId !== '' && Boolean(expanded[candidateId])
+              const sourceLabel =
+                discovered && discovered.ok
+                  ? t('setDetectSourceModels')
+                  : candidate && candidate.detectedFrom === 'global'
+                    ? t('setDetectSourceHost')
+                    : ''
+              return h(
                 'div',
-                { key: (candidate && candidate.id) || index, className: 'vcg-set-candidate' },
+                { key: candidateId || index, className: 'vcg-set-candidate' },
                 h(
                   'div',
                   { className: 'vcg-row', style: { flexWrap: 'wrap' } },
@@ -685,8 +791,47 @@
                       }),
                     )
                   : null,
-              ),
-            ),
+                available.length > 0 || discovered
+                  ? h(
+                      'div',
+                      { className: 'vcg-set-candidate-extra' },
+                      h(
+                        'div',
+                        { className: 'vcg-row', style: { flexWrap: 'wrap' } },
+                        available.length > 0
+                          ? h(
+                              'span',
+                              { className: 'vcg-set-model-count' },
+                              t('setAvailableModels', { count: available.length }),
+                            )
+                          : null,
+                        discovered
+                          ? h(
+                              Badge,
+                              {
+                                color: discovered.ok
+                                  ? 'var(--dsw-alias-state-success-primary)'
+                                  : 'var(--dsw-alias-state-warn-primary)',
+                              },
+                              discovered.ok ? t('setDetectModelsOk', { count: discovered.count }) : t('setDetectModelsFail'),
+                            )
+                          : null,
+                        sourceLabel !== '' ? h(Badge, null, t('setDetectSource', { source: sourceLabel })) : null,
+                        available.length > 0 && candidateId !== ''
+                          ? h(
+                              Button,
+                              { size: 'sm', variant: 'ghost', onClick: () => toggleAll(candidateId) },
+                              expandedNow ? t('setModelsCollapse') : t('setModelsExpand'),
+                            )
+                          : null,
+                      ),
+                      expandedNow && available.length > 0
+                        ? h('div', { className: 'vcg-set-model-list vcg-set-mono' }, available.join(' · '))
+                        : null,
+                    )
+                  : null,
+              )
+            }),
           )
         : null,
       Object.keys(globalModels).length > 0
@@ -718,7 +863,10 @@
     if (!test) return null
     if (test.loading) return h('div', { className: 'vcg-row' }, h(Spinner, { size: 14, label: t('setTesting') }))
     if (test.ok) {
-      const models = asArray(test.models).map((model) => (typeof model === 'string' ? model : model && (model.id || model.name))).filter(Boolean)
+      // `test.models` is an object `{image,video,text,audio,all}`; flatten it so
+      // every discovered model id is visible instead of silently empty (§14.3).
+      const models = flattenModelIds(test.models)
+      const shown = models.slice(0, 60)
       return h(
         Banner,
         { kind: 'success', title: t('setTestOk') },
@@ -727,8 +875,15 @@
           { className: 'vcg-row', style: { flexWrap: 'wrap' } },
           test.latencyMs !== undefined ? h(Badge, null, t('setLatency') + ' ' + test.latencyMs + 'ms') : null,
           test.mode ? h(Badge, null, t('setTestMode') + ' ' + test.mode) : null,
-          models.length ? h('span', { className: 'vcg-subtitle' }, t('setModels') + '：' + models.join(' / ')) : null,
+          models.length ? h(Badge, null, t('setAvailableModels', { count: models.length })) : null,
         ),
+        models.length
+          ? h(
+              'div',
+              { className: 'vcg-set-model-list vcg-set-mono', style: { marginTop: 6 } },
+              shown.join(' / ') + (models.length > shown.length ? ' … +' + (models.length - shown.length) : ''),
+            )
+          : null,
       )
     }
     return h(Banner, { kind: 'error', title: t('setTestFail') }, test.error || t('error'))
@@ -861,6 +1016,7 @@
           enabled: true,
           detectedFrom: 'custom',
           modelText: { image: '', video: '', text: '' },
+          autoModels: [],
         }
         return { ...previous, providers: previous.providers.concat([provider]) }
       })
@@ -908,6 +1064,18 @@
       try {
         const result = await V.rpc('detectProviders')
         setDetect(result || { candidates: [], globalModels: {} })
+        // Refresh the read-only auto-read lists on provider cards with the
+        // fresh `/models` catalog so a later save keeps them (§14.3).
+        const allModels = result && result.allModels && typeof result.allModels === 'object' ? result.allModels : {}
+        if (Object.keys(allModels).length > 0) {
+          patchForm((previous) => ({
+            ...previous,
+            providers: previous.providers.map((provider) => {
+              const next = asArray(allModels[provider.id]).map(String)
+              return next.length > 0 ? { ...provider, autoModels: unique(next) } : provider
+            }),
+          }))
+        }
       } catch (error) {
         setDetectError(msgOf(error))
       } finally {
@@ -922,6 +1090,8 @@
         const providers = previous.providers.slice()
         for (const candidate of candidates) {
           const mapped = providerFromCandidate(candidate)
+          const detectedAll = asArray(detect && detect.allModels && detect.allModels[candidate.id]).map(String)
+          if (detectedAll.length > 0) mapped.autoModels = unique(asArray(mapped.autoModels).concat(detectedAll))
           const existing = providers.findIndex(
             (provider) =>
               (candidate.id && provider.id === candidate.id) ||
@@ -933,6 +1103,7 @@
               ...mapped,
               apiKey: providers[existing].apiKey,
               apiKeyConfigured: providers[existing].apiKeyConfigured || mapped.apiKeyConfigured,
+              autoModels: unique(asArray(providers[existing].autoModels).concat(asArray(mapped.autoModels))),
             }
           } else {
             providers.push(mapped)
@@ -1207,6 +1378,8 @@
                   h(ProviderCard, {
                     key: provider.id || index,
                     provider,
+                    discoveredModels: (detect && detect.allModels && detect.allModels[provider.id]) || [],
+                    discovery: (detect && detect.discovered && detect.discovered[provider.id]) || undefined,
                     onChange: (patch) => updateProvider(index, patch),
                     onModelText: (cap, text) => updateProviderModelText(index, cap, text),
                     onRemove: () => removeProvider(index),
@@ -1526,6 +1699,10 @@
 .vcg-set-candidate-name{font-weight:600;font-size:12.5px}
 .vcg-set-global-models{display:flex;flex-direction:column;gap:5px;border-top:1px dashed var(--dsw-alias-border-l1);padding-top:8px}
 .vcg-set-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--dsw-alias-label-secondary);word-break:break-all}
+.vcg-set-candidate-extra{display:flex;flex-direction:column;gap:5px;margin-top:2px}
+.vcg-set-model-count{font-size:11.5px;color:var(--dsw-alias-label-secondary)}
+.vcg-set-model-list{max-height:150px;overflow:auto;line-height:1.65;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:7px;padding:6px 8px}
+.vcg-set-auto-models{display:flex;flex-direction:column;gap:5px;border:1px dashed var(--dsw-alias-border-l1);border-radius:8px;padding:8px 10px;background:color-mix(in srgb,var(--dsw-alias-bg-base) 40%,transparent)}
 .vcg-set-node-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);padding:8px 10px}
 .vcg-set-node-name{font-size:12.5px;font-weight:600}
 .vcg-set-actions{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;margin-top:4px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1));backdrop-filter:blur(8px);box-shadow:0 -4px 18px rgba(0,0,0,.08)}

@@ -24,7 +24,7 @@ import { homedir } from 'node:os'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { clamp, isPlainObject, jsonResponse, messageOf, nowIso, normalizeBaseUrl, positiveInt, tail, uid } from './lib/util.js'
+import { clamp, isPlainObject, jsonResponse, messageOf, nowIso, normalizeBaseUrl, positiveInt, tail, uid, uniqueStrings } from './lib/util.js'
 import { DEFAULT_MODEL_CATALOG, StateStore, dataDirectory, maskProvider, normalizeOutputDir, normalizeProvider } from './lib/state.js'
 import {
   BUILTIN_FNS,
@@ -42,6 +42,8 @@ import {
   KNOWN_TEXT_MODELS,
   catalogModels,
   chatText,
+  classifyModel,
+  listProviderModels,
   preferredModel,
   generateImage as generateCloudImage,
   generateVideo as generateCloudVideo,
@@ -69,6 +71,8 @@ const DEFAULT_BAILIAN_BASE_URL = 'https://token-plan.cn-beijing.maas.aliyuncs.co
 const DEFAULT_BAILIAN_KEY_REF = 'BAILIAN_TPP_API_KEY'
 /** Methods allowed to carry a large body (canvas / imported node JSON). */
 const LARGE_BODY_METHODS = new Set(['saveCanvas', 'importNode', 'saveSettings'])
+/** Per-provider `/models` detection cap (§14.3); detection is best-effort. */
+const PROVIDER_DETECT_TIMEOUT_MS = 8000
 
 /** Directory of this plugin file. */
 const PLUGIN_DIR = dirname(fileURLToPath(import.meta.url))
@@ -76,6 +80,30 @@ const PLUGIN_DIR = dirname(fileURLToPath(import.meta.url))
 /** Whether a provider kind needs an Authorization Bearer key. */
 function needsApiKey() {
   return true
+}
+
+/**
+ * Compose a signal that aborts after the per-provider detection cap.
+ * Returns the parent signal unchanged if no timeout primitive is available.
+ */
+function detectionSignal(parent) {
+  let timeout
+  try {
+    timeout = AbortSignal.timeout(PROVIDER_DETECT_TIMEOUT_MS)
+  } catch {
+    return parent
+  }
+  if (!parent) return timeout
+  try {
+    return AbortSignal.any([parent, timeout])
+  } catch {
+    return parent
+  }
+}
+
+/** Empty model catalog in the state `models` shape. */
+function emptyModelCatalog() {
+  return { image: [], video: [], text: [], audio: [], all: [] }
 }
 
 /** One VCG studio instance owns state, nodes, execution, RPC, tool, prompt. */
@@ -463,9 +491,14 @@ class VcgStudio {
   }
 
   /**
-   * Detect providers from `ctx.llm` + `ctx.credentials` and persist a default
-   * record for the global Alibaba Token Plan route.
-   * @returns {Promise<{candidates:object[], globalModels:object, providerId?:string}>}
+   * Detect providers from `ctx.llm` + `ctx.credentials`, persist a default
+   * record for the global Alibaba Token Plan route, then read the full model
+   * catalog of every configured provider through its `/models` endpoint (§14.3).
+   *
+   * Best-effort by design: every call is parallel, capped at 8s per provider,
+   * and failures are swallowed so plugin startup and the UI are never blocked.
+   * @returns {Promise<{candidates:object[], globalModels:object, providerId?:string,
+   *   allModels:Object<string,string[]>, discovered:Object<string,{ok:boolean,count:number,error?:string}>}>}
    */
   async detectProviders() {
     const llm = this.ctx.get('llm')
@@ -477,8 +510,9 @@ class VcgStudio {
       globalKey = ''
     }
     this.globalKeyAvailable = globalKey !== ''
-    const globalModels = { image: [], video: [], text: [] }
+    let globalModels = emptyModelCatalog()
     let detectedInfo
+    let changed = false
     if (llm) {
       let infos = []
       try {
@@ -499,19 +533,14 @@ class VcgStudio {
         const isBailian = info.id === 'bailian-tpp' || /bailian|token\s*plan|阿里/i.test(`${info.id} ${info.name ?? ''}`)
         if (isBailian) {
           detectedInfo = { id: info.id, name: info.name ?? info.id, catalog }
-          const merged = mergeCatalogs(globalModels, catalog)
-          globalModels.image = merged.image
-          globalModels.video = merged.video
-          globalModels.text = merged.text
+          globalModels = mergeCatalogs(globalModels, catalog)
         }
       }
     }
+    const globalCount =
+      globalModels.image.length + globalModels.video.length + globalModels.text.length + globalModels.audio.length
     const finalModels =
-      globalModels.image.length + globalModels.video.length + globalModels.text.length > 0
-        ? globalModels
-        : globalKey !== '' || detectedInfo
-          ? { ...DEFAULT_MODEL_CATALOG }
-          : { image: [], video: [], text: [] }
+      globalCount > 0 ? globalModels : globalKey !== '' || detectedInfo ? mergeCatalogs(DEFAULT_MODEL_CATALOG) : emptyModelCatalog()
 
     if (detectedInfo || (globalKey !== '' && this.state.providers.length === 0)) {
       const info = detectedInfo ?? { id: 'bailian-tpp', name: 'Alibaba Token Plan', catalog: finalModels }
@@ -534,15 +563,18 @@ class VcgStudio {
         if (created) {
           record = created
           this.state.providers.unshift(record)
+          changed = true
         }
       } else {
         record.models = mergeCatalogs(record.models, models)
         if (!record.baseUrl) record.baseUrl = DEFAULT_BAILIAN_BASE_URL
         if (!record.apiKeyRef) record.apiKeyRef = DEFAULT_BAILIAN_KEY_REF
+        changed = true
       }
       if (record) {
         if (!this.state.defaults.providerId || !this.state.providers.some((provider) => provider.id === this.state.defaults.providerId)) {
           this.state.defaults.providerId = record.id
+          changed = true
         }
         if (!this.state.defaults.imageModel && record.models.image.length > 0) {
           this.state.defaults.imageModel = preferredModel('image', record.models.image)
@@ -553,10 +585,66 @@ class VcgStudio {
         if (!this.state.defaults.textModel && record.models.text.length > 0) {
           this.state.defaults.textModel = preferredModel('text', record.models.text)
         }
-        await this.persist()
       }
     }
-    return { candidates: this.publicProviders(), globalModels: finalModels, providerId: this.state.defaults.providerId }
+
+    // §14.3: read the full `/models` catalog of every provider that has a
+    // baseUrl, in parallel. One slow/failing provider never blocks the rest.
+    const allModels = {}
+    const discovered = {}
+    const targets = (Array.isArray(this.state.providers) ? this.state.providers : []).filter(
+      (provider) => provider && typeof provider.baseUrl === 'string' && provider.baseUrl.trim() !== '',
+    )
+    const settled = await Promise.allSettled(
+      targets.map(async (provider) => {
+        const apiKey = await this.providerKey(provider)
+        const result = await listProviderModels(provider, {
+          apiKey,
+          timeoutMs: PROVIDER_DETECT_TIMEOUT_MS,
+          signal: detectionSignal(this.abort.signal),
+        })
+        return { provider, result }
+      }),
+    )
+    for (let index = 0; index < targets.length; index += 1) {
+      const provider = targets[index]
+      const entry = settled[index]
+      if (!entry || entry.status !== 'fulfilled' || !entry.value) {
+        discovered[provider.id] = {
+          ok: false,
+          count: 0,
+          error: entry?.status === 'rejected' ? messageOf(entry.reason) : '读取 /models 失败',
+        }
+        continue
+      }
+      const result = entry.value.result ?? {}
+      const all = uniqueStrings([...(Array.isArray(result.all) ? result.all : []), ...(Array.isArray(result.models?.all) ? result.models.all : [])])
+      if (result.discovered) {
+        provider.models = mergeCatalogs(provider.models, result.models)
+        const mergedAll = uniqueStrings([...(provider.models.all ?? []), ...all])
+        provider.models.all = mergedAll
+        // §14.3: older state records kept audio ids inside the text bucket; the
+        // live /models classification now knows better, so drop those stale ids
+        // from the generation buckets (they stay visible in `audio` / `all`).
+        for (const capability of ['image', 'video', 'text']) {
+          provider.models[capability] = provider.models[capability].filter((model) => classifyModel(model) !== 'audio')
+        }
+        allModels[provider.id] = mergedAll
+        discovered[provider.id] = { ok: true, count: mergedAll.length }
+        changed = true
+      } else {
+        if (all.length > 0) allModels[provider.id] = all
+        discovered[provider.id] = { ok: false, count: 0, error: '未从 /models 读取到模型列表' }
+      }
+    }
+    if (changed) await this.persist()
+    return {
+      candidates: this.publicProviders(),
+      globalModels: finalModels,
+      providerId: this.state.defaults.providerId,
+      allModels,
+      discovered,
+    }
   }
 
   /* ------------------------------------------------------------------ state */
