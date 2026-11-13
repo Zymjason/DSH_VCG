@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "VCG Visual Control Generator",
+    "description": "Node-based image/video generation workflow canvas (Visual Control Generator): switch a chat into VCG canvas mode or create a VCG project workspace where every conversation is a canvas; build workflows automatically by chatting above the canvas; run image/video generation through cloud DeepSeek Harness model APIs by default, or enable local ComfyUI compute plus pro-mode node imports in Settings. Nodes and workflows come from the DSH_VCG_repo repository."
+  }
+}

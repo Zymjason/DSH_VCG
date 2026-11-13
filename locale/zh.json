@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "VCG 视觉控制生成器",
+    "description": "节点式图像/视频生成工作流画布（Visual Control Generator）：在聊天中开启 VCG 画布模式替代传统对话，或创建所有对话均为画布的 VCG 项目工作区；画布上方可用对话让 AI 自动组建工作流；默认通过云端 DeepSeek Harness 模型 API 完成生图/生视频，也可在设置中开启本地 ComfyUI 运算与专业模式的节点导入。节点与工作流来自 DSH_VCG_repo 仓库。"
+  }
+}

@@ -1,0 +1,9 @@
+# VCG 视觉控制生成器 bundle：一个 Host 行。该行 config 只提供首次启动默认值；
+# 用户之后在「设置 → VCG 视觉控制生成器」的修改保存在 profile 旁的
+# data/dsh-vcg/state.json 并优先生效。包名与行 id 保持 dsh-vcg 以稳定升级。
+- insert:
+    - id: dsh-vcg
+      name: '@local/dsh-vcg'
+      config:
+        nodeRepo: ''
+        outputDir: 'vcg-output'
