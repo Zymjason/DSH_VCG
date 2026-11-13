@@ -22,6 +22,8 @@
     Glyph,
     Badge,
     StyleTag,
+    IconButton,
+    Modal,
   } = V.ui
 
   /* ------------------------------------------------------------- locales */
@@ -493,9 +495,34 @@
   }) {
     const Canvas = V.Canvas
     const nodeCount = asArray(workflow && workflow.nodes).length
+    const [fullscreen, setFullscreen] = React.useState(false)
+    const [debugBusy, setDebugBusy] = React.useState(false)
+    const [debugReport, setDebugReport] = React.useState(null)
+    const [debugError, setDebugError] = React.useState('')
+    React.useEffect(() => {
+      if (!fullscreen) return undefined
+      const onKey = (event) => {
+        if (event.key === 'Escape') setFullscreen(false)
+      }
+      document.addEventListener('keydown', onKey)
+      return () => document.removeEventListener('keydown', onKey)
+    }, [fullscreen])
+    const debugRun = async () => {
+      if (!workflow || debugBusy) return
+      setDebugBusy(true)
+      setDebugError('')
+      try {
+        const report = await V.rpc('debugWorkflow', { key: scopeKey, workflow })
+        setDebugReport(report)
+      } catch (error) {
+        setDebugError(msgOf(error))
+      } finally {
+        setDebugBusy(false)
+      }
+    }
     return h(
       'div',
-      { className: 'vcg-studio-canvas-panel' },
+      { className: 'vcg-studio-canvas-panel' + (fullscreen ? ' vcg-studio-canvas-panel-full' : '') },
       h(
         'div',
         { className: 'vcg-studio-canvas-toolbar' },
@@ -511,18 +538,47 @@
           'div',
           { className: 'vcg-row', style: { flexWrap: 'wrap' } },
           h(
+            Button,
+            { variant: 'primary', size: 'sm', onClick: onRunAll, disabled: running || !workflow, icon: running ? undefined : 'play' },
+            running ? '运行中…' : '运行工作流',
+          ),
+          h(
+            Button,
+            { size: 'sm', onClick: debugRun, disabled: debugBusy || running || !workflow, icon: debugBusy ? undefined : 'check', title: 'Debug 运行：只校验模型能否加载、工作流/节点完整性与安全性，不生成内容' },
+            debugBusy ? '校验中…' : 'Debug 运行',
+          ),
+          h(
+            IconButton,
+            { label: fullscreen ? '退出全屏' : '全屏画布', title: fullscreen ? '退出全屏（Esc）' : '全屏画布', onClick: () => setFullscreen((value) => !value) },
+            h(Glyph, { name: fullscreen ? 'close' : 'fit', size: 15 }),
+          ),
+          h(
             Field,
             { label: t('stuScope'), style: { minWidth: 190 } },
             h(Select, { value: scopeKey, options: scopeOptions, onChange: onScopeChange }),
           ),
           h(
             Button,
-            { variant: 'primary', size: 'sm', onClick: onSave, disabled: saving, icon: saving ? undefined : 'save' },
+            { size: 'sm', onClick: onSave, disabled: saving, icon: saving ? undefined : 'save' },
             saving ? t('saving') : t('stuSaveCanvas'),
           ),
         ),
       ),
       outputDirHint ? h('div', { className: 'vcg-studio-canvas-hint' }, outputDirHint) : null,
+      debugError ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'error', title: 'Debug 运行失败' }, debugError)) : null,
+      h(Modal, {
+        open: Boolean(debugReport),
+        title: 'Debug 运行报告（不生成内容）',
+        onClose: () => setDebugReport(null),
+        width: 'min(760px,100%)',
+        footer: [
+          h('span', { key: 'hint', className: 'vcg-subtitle', style: { flex: 1 } }, debugReport && debugReport.ok ? '所有必需检查通过，可以正式运行。' : '存在失败项，请按提示修正后再运行。'),
+          h(Button, { key: 'close', onClick: () => setDebugReport(null) }, '关闭'),
+          debugReport && debugReport.ok
+            ? h(Button, { key: 'run', variant: 'primary', icon: 'play', onClick: () => { setDebugReport(null); onRunAll() } }, '正式运行')
+            : null,
+        ],
+      }, h(V.ui.DebugReport, { report: debugReport })),
       loading
         ? h('div', { className: 'vcg-studio-loading' }, h(Spinner, { label: t('stuCanvasLoading') }))
         : h(
@@ -1441,6 +1497,7 @@
 .vcg-studio-wf-desc{font-size:12px;color:var(--dsw-alias-label-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px}
 .vcg-studio-wf-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
 .vcg-studio-canvas-panel{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding-bottom:20px}
+.vcg-studio-canvas-panel-full{position:fixed;inset:0;z-index:80;background:var(--dsw-alias-bg-base);height:100vh;width:100vw;box-shadow:0 0 0 1px var(--dsw-alias-border-l2)}
 .vcg-studio-canvas-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;flex:none}
 .vcg-studio-canvas-name{font-size:13px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:320px}
 .vcg-studio-canvas-hint{font-size:11.5px;color:var(--dsw-alias-label-secondary);margin-top:-4px}

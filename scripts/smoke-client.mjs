@@ -198,11 +198,63 @@ const required = [
   ['main', 'dsh-vcg'],
   ['conversation.view', 'vcg'],
   ['conversation.hero.options', 'vcg-new-chat'],
+  ['sidebar.panellist', 'dsh-vcg-repo'],
+  ['main', 'dsh-vcg-repo'],
 ]
 for (const [slot, id] of required) {
   const found = bySlot(slot).some((entry) => entry.id === id && typeof entry.component === 'function')
   check(`registers ${slot}#${id}`, found, JSON.stringify(bySlot(slot).map((entry) => entry.id)))
 }
+
+/* ----------------------------------------------------- one-pass render */
+
+/* Render every registered component once against the fake React above.
+   Hooks are no-ops and effects never run, so this only catches render-time
+   crashes: missing V.ui components, undefined helpers, bad destructuring. */
+const renderFailures = []
+let renderedNodes = 0
+const RENDER_LIMIT = 20000
+function walkElement(node, depth) {
+  if (depth > 60 || renderedNodes > RENDER_LIMIT) return
+  if (node === null || node === undefined || node === false || node === true) return
+  if (Array.isArray(node)) {
+    for (const item of node) walkElement(item, depth + 1)
+    return
+  }
+  if (typeof node === 'string' || typeof node === 'number') return
+  if (!node || typeof node !== 'object' || !('type' in node)) return
+  renderedNodes += 1
+  const type = node.type
+  const props = node.props || {}
+  if (typeof type === 'function') {
+    let out
+    try {
+      out = type(props)
+    } catch (error) {
+      renderFailures.push((type.name || 'anonymous') + ': ' + (error && error.message ? error.message : String(error)))
+      return
+    }
+    walkElement(out, depth + 1)
+    return
+  }
+  if (typeof type === 'symbol') {
+    walkElement(props.children, depth + 1)
+    return
+  }
+  walkElement(props.children, depth + 1)
+}
+for (const entry of registrations) {
+  let out
+  try {
+    out = entry.component({ sessionId: undefined })
+  } catch (error) {
+    renderFailures.push(entry.slot + '#' + entry.id + ': ' + (error && error.message ? error.message : String(error)))
+    continue
+  }
+  walkElement(out, 0)
+}
+check('registered components render one pass without throwing', renderFailures.length === 0, renderFailures.slice(0, 3).join(' ; '))
+check('render walk covers a non-trivial tree', renderedNodes > 50, 'rendered nodes: ' + renderedNodes)
 
 /* --------------------------------------------------------------- report */
 

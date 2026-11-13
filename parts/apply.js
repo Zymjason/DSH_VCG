@@ -15,6 +15,7 @@
   const { Glyph, Empty } = V.ui
 
   const PACKAGE_ID = 'dsh-vcg'
+  const REPO_PACKAGE_ID = 'dsh-vcg-repo'
   const VIEW_ID = 'vcg'
 
   /** Guard: render a friendly placeholder if a part failed to materialize. */
@@ -71,16 +72,22 @@
     /* Conversation / workspace navigation adapters (best effort). */
     try {
       const uiWorkspace = ctx.get('uiWorkspace')
-      if (uiWorkspace) {
-        V.setNav({
-          openSession: (sessionId) => uiWorkspace.openSession(sessionId),
-          openWorkspace: (workspaceId, beforeOpen) => uiWorkspace.openWorkspace(workspaceId, beforeOpen),
-          connectWorkspace: (workspaceId, options) => uiWorkspace.connectWorkspace(workspaceId, options),
-          startSession: (workspaceId, options) => uiWorkspace.startSession(workspaceId, options),
-          setPreferredView: V.setPreferredView,
-          readConversationView: V.readConversationView,
-        })
-      }
+      const layout = ctx.get('layout')
+      V.setNav({
+        ...(uiWorkspace
+          ? {
+              openSession: (sessionId) => uiWorkspace.openSession(sessionId),
+              openWorkspace: (workspaceId, beforeOpen) => uiWorkspace.openWorkspace(workspaceId, beforeOpen),
+              connectWorkspace: (workspaceId, options) => uiWorkspace.connectWorkspace(workspaceId, options),
+              startSession: (workspaceId, options) => uiWorkspace.startSession(workspaceId, options),
+            }
+          : {}),
+        openPanel: (panelId) => {
+          if (layout && typeof layout.selectPanel === 'function') layout.selectPanel(panelId)
+        },
+        setPreferredView: V.setPreferredView,
+        readConversationView: V.readConversationView,
+      })
     } catch (error) {
       console.warn('[vcg] navigation adapters unavailable', error)
     }
@@ -132,6 +139,36 @@
           ),
         ),
       'vcg: studio page',
+    )
+
+    ctx.effect(
+      () =>
+        slots.inject('sidebar.panellist', () =>
+          slots.register(
+            {
+              name: 'sidebar.panellist',
+              id: REPO_PACKAGE_ID,
+              order: 24,
+              label: () => 'VCG 节点工作流仓库',
+            },
+            guard(V.RepoPanelIcon || V.PanelIcon, '节点仓库图标'),
+          ),
+        ),
+      'vcg: node repository panel',
+    )
+
+    ctx.effect(
+      () =>
+        slots.inject('main', () =>
+          slots.register(
+            {
+              name: 'main',
+              key: REPO_PACKAGE_ID,
+            },
+            guard(V.NodeRepoPage, 'VCG 节点工作流仓库'),
+          ),
+        ),
+      'vcg: node repository page',
     )
 
     ctx.effect(

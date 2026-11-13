@@ -9,7 +9,7 @@
   'use strict'
 
   const { React, h } = V
-  const { Button, Field, TextArea, Banner, Spinner, Empty, IconButton, Glyph, Badge } = V.ui
+  const { Button, Field, TextArea, Banner, Spinner, Empty, IconButton, Glyph, Badge, Modal } = V.ui
 
   const VIEW_ID = 'vcg'
 
@@ -151,6 +151,10 @@
     const [results, setResults] = React.useState({})
     const [selectedId, setSelectedId] = React.useState(null)
     const [running, setRunning] = React.useState(false)
+    const [fullscreen, setFullscreen] = React.useState(false)
+    const [debugBusy, setDebugBusy] = React.useState(false)
+    const [debugReport, setDebugReport] = React.useState(null)
+    const [debugError, setDebugError] = React.useState('')
     const [saving, setSaving] = React.useState(false)
     const [loadError, setLoadError] = React.useState('')
     const [runError, setRunError] = React.useState('')
@@ -296,6 +300,36 @@
       setNotice('已停止等待当前运行结果（云端请求可能仍在服务端完成）。')
     }
 
+    /* Debug 运行：只校验模型可加载性/完整性/安全性，不生成内容。 */
+    const debugRun = async () => {
+      if (!workflow || debugBusy) return
+      setDebugBusy(true)
+      setDebugError('')
+      try {
+        const report = await V.rpc('debugWorkflow', {
+          key: canvasKey,
+          workflow,
+          sessionId: sessionId || undefined,
+        })
+        setDebugReport(report)
+      } catch (err) {
+        setDebugError(V.messageOf(err))
+      } finally {
+        setDebugBusy(false)
+      }
+    }
+
+    /* 画布全屏：固定覆盖整个窗口，Esc 退出。 */
+    const toggleFullscreen = () => setFullscreen((value) => !value)
+    React.useEffect(() => {
+      if (!fullscreen) return undefined
+      const onKey = (event) => {
+        if (event.key === 'Escape') setFullscreen(false)
+      }
+      document.addEventListener('keydown', onKey)
+      return () => document.removeEventListener('keydown', onKey)
+    }, [fullscreen])
+
     const openChat = () => {
       if (props && typeof props.openView === 'function') props.openView('chat', '')
       else if (props && typeof props.completeViewRequest === 'function') props.completeViewRequest()
@@ -319,7 +353,7 @@
 
     return h(
       'div',
-      { className: 'vcg-root vcg-view', onContextMenu: (event) => event.preventDefault() },
+      { className: 'vcg-root vcg-view' + (fullscreen ? ' vcg-view-full' : ''), onContextMenu: (event) => event.preventDefault() },
       h(V.StyleTag, null),
       h('style', { dangerouslySetInnerHTML: { __html: VIEW_CSS } }),
       loadError ? h('div', { style: { padding: '8px 12px 0' } }, h(Banner, { kind: 'error', title: 'VCG 画布载入失败' }, loadError)) : null,
@@ -337,12 +371,41 @@
           h('span', { className: 'vcg-subtitle' }, outputDirHint),
           h('span', { style: { flex: 1 } }),
           saving ? h('span', { className: 'vcg-subtitle' }, '保存中…') : lastSaved ? h('span', { className: 'vcg-subtitle' }, '已保存 ' + V.formatTime(lastSaved)) : null,
+          h(
+            Button,
+            { variant: 'primary', size: 'sm', onClick: runAll, disabled: running || !workflow, icon: running ? undefined : 'play' },
+            running ? '运行中…' : '运行工作流',
+          ),
+          h(
+            Button,
+            { size: 'sm', onClick: debugRun, disabled: debugBusy || running || !workflow, icon: debugBusy ? undefined : 'check', title: 'Debug 运行：只校验模型能否加载、工作流/节点完整性与安全性，不生成内容' },
+            debugBusy ? '校验中…' : 'Debug 运行',
+          ),
+          h(
+            IconButton,
+            { label: fullscreen ? '退出全屏' : '全屏画布', title: fullscreen ? '退出全屏（Esc）' : '全屏画布', onClick: toggleFullscreen },
+            h(Glyph, { name: fullscreen ? 'close' : 'fit', size: 15 }),
+          ),
           h(Button, { size: 'sm', variant: 'ghost', icon: 'back', onClick: openChat }, '切换到对话'),
         ),
         h(AiBuilder, { workflow, onBuilt: (next) => onChange(next), disabled: running }),
       ),
       runError ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'error', title: '运行失败', action: h(IconButton, { label: '关闭', onClick: () => setRunError('') }, h(Glyph, { name: 'close', size: 14 })) }, runError)) : null,
       notice ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'info' }, notice)) : null,
+      debugError ? h('div', { style: { padding: '0 12px 6px' } }, h(Banner, { kind: 'error', title: 'Debug 运行失败' }, debugError)) : null,
+      h(Modal, {
+        open: Boolean(debugReport),
+        title: 'Debug 运行报告（不生成内容）',
+        onClose: () => setDebugReport(null),
+        width: 'min(760px,100%)',
+        footer: [
+          h('span', { key: 'hint', className: 'vcg-subtitle', style: { flex: 1 } }, debugReport && debugReport.ok ? '所有必需检查通过，可以正式运行。' : '存在失败项，请按提示修正后再运行。'),
+          h(Button, { key: 'close', onClick: () => setDebugReport(null) }, '关闭'),
+          debugReport && debugReport.ok
+            ? h(Button, { key: 'run', variant: 'primary', icon: 'play', onClick: () => { setDebugReport(null); runAll() } }, '正式运行')
+            : null,
+        ],
+      }, h(V.ui.DebugReport, { report: debugReport })),
       h(
         'div',
         { className: 'vcg-view-canvas' },
@@ -377,6 +440,7 @@
 .vcg-view-aibuild{display:flex;flex-direction:column;gap:2px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:10px;padding:8px 10px}
 .vcg-view-aibuild-icon{color:var(--dsw-alias-brand-primary);display:inline-flex}
 .vcg-view-canvas{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.vcg-view-full{position:fixed;inset:0;z-index:80;background:var(--dsw-alias-bg-base);height:100vh;width:100vw;box-shadow:0 0 0 1px var(--dsw-alias-border-l2)}
 `
 
   V.ChatCanvasView = ChatCanvasView

@@ -512,6 +512,12 @@
 .vcg-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:8px;padding:8px;overflow:auto;max-height:260px;white-space:pre-wrap;word-break:break-all}
 .vcg-img{display:block;max-width:100%;border-radius:8px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2)}
 .vcg-thumb{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);cursor:zoom-in}
+.vcg-debug{display:flex;flex-direction:column;gap:10px;min-width:0}
+.vcg-debug-summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vcg-debug-group{display:flex;flex-direction:column;gap:5px}
+.vcg-debug-group-title{font-size:12px;font-weight:600;color:var(--dsw-alias-label-secondary)}
+.vcg-debug-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.vcg-debug-item{display:flex;align-items:flex-start;gap:7px;padding:5px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:var(--dsw-alias-bg-layer-1);font-size:12px;line-height:1.45}
 `
 
   function StyleTag() {
@@ -849,6 +855,89 @@
     )
   }
 
+  /* --------------------------------------------------- debug run report */
+
+  const DEBUG_GROUP_LABELS = {
+    schema: '结构完整性',
+    graph: '连线与拓扑',
+    params: '参数',
+    engine: '运行引擎 / 模型加载',
+    model: '模型加载',
+    security: '安全性',
+  }
+  const DEBUG_LEVEL = {
+    pass: { label: '通过', color: 'var(--dsw-alias-state-success-primary)', glyph: 'check' },
+    warn: { label: '警告', color: 'var(--dsw-alias-state-warn-primary)', glyph: 'warning' },
+    fail: { label: '失败', color: 'var(--dsw-alias-state-error-primary)', glyph: 'warning' },
+  }
+
+  /**
+   * Render one Debug 运行 report (from Host debugWorkflow): grouped checks,
+   * pass/warn/fail counts and the explanatory note.
+   * @param {{report: object}} props
+   */
+  function DebugReport({ report }) {
+    if (!report) return null
+    const checks = Array.isArray(report.checks) ? report.checks : []
+    const summary = report.summary || {}
+    const groups = []
+    const byGroup = new Map()
+    for (const item of checks) {
+      const group = item.group || 'schema'
+      if (!byGroup.has(group)) {
+        byGroup.set(group, [])
+        groups.push(group)
+      }
+      byGroup.get(group).push(item)
+    }
+    const levelStyle = (level) => DEBUG_LEVEL[level] || DEBUG_LEVEL.warn
+    return h(
+      'div',
+      { className: 'vcg-debug' },
+      h(
+        'div',
+        { className: 'vcg-debug-summary' },
+        h(Badge, { color: report.ok ? 'var(--dsw-alias-state-success-primary)' : 'var(--dsw-alias-state-error-primary)' }, report.ok ? 'Debug 通过' : 'Debug 未通过'),
+        h(Badge, null, '通过 ' + (summary.passed || 0)),
+        h(Badge, { color: 'var(--dsw-alias-state-warn-primary)' }, '警告 ' + (summary.warned || 0)),
+        h(Badge, { color: 'var(--dsw-alias-state-error-primary)' }, '失败 ' + (summary.failed || 0)),
+        report.nodeCount !== undefined ? h(Badge, null, report.nodeCount + ' 节点 / ' + (report.edgeCount || 0) + ' 连线') : null,
+        report.provider ? h(Badge, null, report.provider.label + ' · ' + (report.provider.model || '默认模型')) : null,
+        h('span', { style: { flex: 1 } }),
+        h('span', { className: 'vcg-subtitle' }, '用时 ' + (report.ms || 0) + 'ms'),
+      ),
+      report.note ? h('div', { className: 'vcg-hint', style: { marginBottom: 6 } }, report.note) : null,
+      groups.length === 0
+        ? h(Empty, { title: '没有检查项', hint: '该工作流为空或无法解析。' })
+        : groups.map((group) =>
+            h(
+              'div',
+              { key: group, className: 'vcg-debug-group' },
+              h('div', { className: 'vcg-debug-group-title' }, DEBUG_GROUP_LABELS[group] || group),
+              h(
+                'ul',
+                { className: 'vcg-debug-list' },
+                byGroup.get(group).map((item, index) => {
+                  const style = levelStyle(item.level)
+                  return h(
+                    'li',
+                    { key: group + '-' + index, className: 'vcg-debug-item' },
+                    h('span', { style: { color: style.color, display: 'inline-flex', marginTop: 1 } }, h(Glyph, { name: style.glyph, size: 13 })),
+                    h(
+                      'span',
+                      { style: { flex: 1, minWidth: 0 } },
+                      h('span', { style: { fontWeight: 600, marginRight: 6 } }, item.label),
+                      item.detail ? h('span', { className: 'vcg-muted', style: { wordBreak: 'break-word' } }, String(item.detail)) : null,
+                    ),
+                    h('span', { className: 'vcg-badge', style: { color: style.color } }, style.label),
+                  )
+                }),
+              ),
+            ),
+          ),
+    )
+  }
+
   /* ------------------------------------------------------- async data hook */
 
   /**
@@ -911,6 +1000,7 @@
     Badge,
     Section,
     StyleTag,
+    DebugReport,
   }
 
   /* --------------------------------------------------------------- inject */

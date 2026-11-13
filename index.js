@@ -35,6 +35,7 @@ import {
   decorateNode,
   prepareImportedNode,
   validateNodeDef,
+  joinUrl,
 } from './lib/nodes.js'
 import {
   KNOWN_IMAGE_MODELS,
@@ -53,6 +54,8 @@ import { defaultProjectsRoot, projectSlug, requireProjectName, sanitizeProjectNa
 import { baseName, isWithin, mimeForPath } from './lib/paths.js'
 import { emptyWorkflow, typesCompatible, validateWorkflowShape, validateWorkflowWithDefs } from './lib/workflow.js'
 import { topoSort } from './lib/graph.js'
+import { runStaticDebug, summarizeChecks } from './lib/debug.js'
+import { fetchJson } from './lib/http.js'
 
 /** RPC route path on the shared API channel. */
 const RPC_PATH = '/api/dsh-vcg/rpc'
@@ -113,6 +116,7 @@ class VcgStudio {
     this.registerRoutes()
     this.registerTool()
     this.registerPromptSection()
+    this.repoCatalogCache = new Map()
     this.watchServices()
   }
 
@@ -941,6 +945,269 @@ class VcgStudio {
     return { result: value.result, order: value.order }
   }
 
+  /* ------------------------------------------------------- debug / repo */
+
+  /**
+   * Debug 运行：只做完整性 / 模型可加载性 / 安全性校验，不生成内容、不写文件。
+   */
+  async debugWorkflow(args = {}) {
+    const started = Date.now()
+    const startedAt = nowIso()
+    const sessionId = String(args?.sessionId ?? '').trim()
+    const key = String(args?.key ?? '').trim() || (sessionId !== '' ? `session:${sessionId}` : '')
+    const raw = args?.workflow ?? (key !== '' ? this.state.canvases?.[key]?.workflow : null) ?? null
+    if (!raw) throw new Error('没有可调试的工作流：请先保存画布或传入 workflow')
+    const defsById = new Map([...this.nodes.nodes.values()].map((def) => [def.id, def]))
+    const baseDir = this.resolveBaseDir({ key, sessionId, baseDir: args?.baseDir })
+    const outputDir = this.outputDirName()
+    const checks = []
+    let workflow
+    try {
+      workflow = validateWorkflowShape(raw, { where: '工作流' })
+    } catch (error) {
+      checks.push({ group: 'schema', level: 'fail', label: '工作流结构非法', detail: messageOf(error) })
+      return this.debugResult({ checks, started, startedAt, key, baseDir, outputDir, network: false })
+    }
+    const staticResult = runStaticDebug({
+      workflow,
+      defsById,
+      settings: { local: this.state.local, proMode: this.state.proMode, outputDir },
+      baseDir,
+      outputDir,
+    })
+    checks.push(...staticResult.checks)
+
+    /* Model loadability: resolve the route, credential and (optionally) probe. */
+    const network = args?.network !== false
+    const isVideo = workflow.nodes.some((node) => defsById.get(node.type)?.executor?.fn === 'videoSampler')
+    const capability = isVideo ? 'video' : 'image'
+    let explicitModel = ''
+    for (const node of workflow.nodes) {
+      const def = defsById.get(node.type)
+      if (!def) continue
+      if (def.executor?.fn === 'ksampler' || def.executor?.fn === 'videoSampler') {
+        const value = node.params?.model
+        if (typeof value === 'string' && value.trim() !== '') explicitModel = value.trim()
+      }
+    }
+    let selected = null
+    try {
+      selected = this.selectProvider(capability, explicitModel || undefined)
+      checks.push({
+        group: 'model',
+        level: 'pass',
+        label: '模型路由',
+        detail: `${selected.provider.label} · ${selected.model || '(使用默认模型)'}（${capability === 'video' ? '生视频' : '生图'}）`,
+      })
+    } catch (error) {
+      checks.push({ group: 'model', level: 'fail', label: '模型路由失败', detail: messageOf(error) })
+    }
+    if (selected) {
+      try {
+        const apiKey = await this.providerKey(selected.provider)
+        if (apiKey === '') {
+          checks.push({
+            group: 'model',
+            level: 'fail',
+            label: 'API Key 缺失',
+            detail: `Provider「${selected.provider.label}」没有可用密钥（全局 API 未登录或自定义 Provider 未填 Key）`,
+          })
+        } else {
+          checks.push({ group: 'model', level: 'pass', label: 'API Key', detail: '已配置（值不进入客户端）' })
+        }
+        const catalog = selected.provider.models?.[capability] ?? []
+        if (catalog.length === 0) {
+          checks.push({ group: 'model', level: 'warn', label: '模型目录为空', detail: '该 Provider 尚未检测到模型列表，运行时会依赖服务端实际可用模型' })
+        } else if (selected.model && !catalog.includes(selected.model)) {
+          checks.push({ group: 'model', level: 'warn', label: '模型不在目录', detail: `${selected.model} 不在已检测目录（${catalog.slice(0, 6).join('、')}）` })
+        }
+        if (network) {
+          const probe = await testProviderConnection(selected.provider, {
+            apiKey,
+            defaults: { ...this.state.defaults },
+            signal: this.abort.signal,
+          })
+          const failedProbe = /401|403|404|密钥|API Key|model|模型/i.test(String(probe?.error ?? ''))
+          checks.push({
+            group: 'model',
+            level: probe?.ok ? 'pass' : failedProbe ? 'fail' : 'warn',
+            label: probe?.ok ? '模型可加载' : '模型加载探测失败',
+            detail: probe?.ok
+              ? `${probe.mode || 'probe'} · ${probe.latencyMs}ms · 生图模型 ${probe.models?.image?.length ?? 0} 个 / 文本 ${probe.models?.text?.length ?? 0} 个`
+              : String(probe?.error ?? '未知错误'),
+          })
+        } else {
+          checks.push({ group: 'model', level: 'pass', label: '离线校验', detail: '已跳过网络探测（network=false）' })
+        }
+      } catch (error) {
+        checks.push({ group: 'model', level: 'fail', label: '模型检查异常', detail: messageOf(error) })
+      }
+    }
+
+    /* Local ComfyUI reachability when local mode is on. */
+    if (this.state.local?.enabled === true) {
+      const comfyUrl = normalizeBaseUrl(this.state.local?.comfyuiUrl)
+      if (comfyUrl === '') {
+        checks.push({ group: 'engine', level: 'fail', label: 'ComfyUI 未配置', detail: '本地模式已开启但未填写 ComfyUI 服务端地址' })
+      } else if (network) {
+        try {
+          await fetchJson(joinUrl(comfyUrl, 'system_stats'), { timeoutMs: 8000, signal: this.abort.signal })
+          checks.push({ group: 'engine', level: 'pass', label: 'ComfyUI 可连接', detail: comfyUrl })
+        } catch (error) {
+          checks.push({ group: 'engine', level: 'fail', label: 'ComfyUI 连接失败', detail: `${comfyUrl}：${messageOf(error)}` })
+        }
+      }
+    }
+
+    return this.debugResult({
+      checks,
+      started,
+      startedAt,
+      key,
+      baseDir,
+      outputDir,
+      network,
+      provider: selected ? { id: selected.provider.id, label: selected.provider.label, model: selected.model } : null,
+      order: staticResult.order,
+      nodeCount: workflow.nodes.length,
+      edgeCount: workflow.edges.length,
+    })
+  }
+
+  /** Shape one Debug 运行 report (no execution results). */
+  debugResult({ checks, started, startedAt, key, baseDir, outputDir, network, provider = null, order = [], nodeCount = 0, edgeCount = 0 }) {
+    const ordered = summarizeChecks(checks)
+    const failed = ordered.filter((item) => item.level === 'fail').length
+    const warned = ordered.filter((item) => item.level === 'warn').length
+    const passed = ordered.filter((item) => item.level === 'pass').length
+    return {
+      ok: failed === 0,
+      mode: 'debug',
+      key,
+      baseDir,
+      outputDir,
+      network: Boolean(network),
+      provider,
+      order,
+      nodeCount,
+      edgeCount,
+      checks: ordered,
+      summary: { passed, warned, failed, total: ordered.length },
+      startedAt,
+      ms: Date.now() - started,
+      note: 'Debug 运行不会调用生图/生视频 API，也不会写入输出文件',
+    }
+  }
+
+  /** Resolve one node-repository raw base from a source selector. */
+  repoTarget(requested = '') {
+    const value = String(requested ?? '').trim()
+    if (/^https?:\/\//i.test(value)) return { base: value, source: 'custom' }
+    if (value === 'github' || value === 'gitea') {
+      const base = value === 'github' ? this.state.nodeRepo.githubBase : this.state.nodeRepo.giteaBase
+      if (base === '') throw new Error(`未配置 ${value} 节点仓库地址：请到「设置 → VCG 视觉控制生成器 → 节点仓库」填写`)
+      return { base, source: value }
+    }
+    const last = this.state.nodeRepo.source
+    const order = last === 'gitea' ? ['gitea', 'github'] : ['github', 'gitea']
+    for (const name of order) {
+      const base = name === 'gitea' ? this.state.nodeRepo.giteaBase : this.state.nodeRepo.githubBase
+      if (base !== '') return { base, source: name }
+    }
+    throw new Error('未配置节点仓库地址：请到「设置 → VCG 视觉控制生成器 → 节点仓库」填写 GitHub/Gitea 仓库地址')
+  }
+
+  /** Browse the node repository without installing anything (60s cache). */
+  async listRepoNodes(args = {}) {
+    const { base, source } = this.repoTarget(args?.source)
+    const cacheKey = `${source}|${base}`
+    const cached = this.repoCatalogCache.get(cacheKey)
+    if (args?.force !== true && cached && Date.now() - cached.at < 60000) return cached.value
+    const signal = this.abort.signal
+    let manifest
+    try {
+      manifest = await fetchJson(joinUrl(base, 'manifest.json'), { timeoutMs: 15000, signal })
+    } catch (error) {
+      throw new Error(`拉取节点仓库失败（${base}）：${messageOf(error)}`)
+    }
+    const warnings = []
+    const nodeIds = Array.isArray(manifest?.nodes) ? manifest.nodes.filter((id) => typeof id === 'string') : []
+    const nodes = []
+    for (const id of nodeIds) {
+      try {
+        const raw = await fetchJson(joinUrl(base, `nodes/${id}.json`), { timeoutMs: 15000, signal })
+        const def = validateNodeDef(raw, { where: `仓库节点 ${id}`, source: 'repo' })
+        const existing = this.nodes.nodeById(def.id)
+        const requiresPro = def.executor?.kind === 'http'
+        nodes.push({
+          ...decorateNode(def, 'repo'),
+          installed: Boolean(existing),
+          installedSource: existing?.source ?? '',
+          requiresPro,
+          canImport: !existing && (requiresPro ? this.state.proMode === true : true),
+        })
+      } catch (error) {
+        warnings.push(`节点 ${id} 拉取失败：${messageOf(error)}`)
+      }
+    }
+    const workflowIds = Array.isArray(manifest?.workflows) ? manifest.workflows.filter((id) => typeof id === 'string') : []
+    const workflows = []
+    for (const wid of workflowIds) {
+      const stem = String(wid).replace(/\.json$/i, '')
+      const candidates = [...new Set([stem, stem.replace(/^wf-/, ''), stem.startsWith('wf-') ? stem : `wf-${stem}`])]
+      let raw = null
+      for (const name of candidates) {
+        try {
+          raw = await fetchJson(joinUrl(base, `workflows/${name}.json`), { timeoutMs: 15000, signal })
+          break
+        } catch {
+          /* try the next naming convention */
+        }
+      }
+      if (!raw) {
+        warnings.push(`工作流 ${wid} 拉取失败`)
+        continue
+      }
+      const workflowId = String(raw?.id ?? wid)
+      workflows.push({
+        id: workflowId,
+        name: String(raw?.name ?? wid),
+        description: String(raw?.description ?? ''),
+        nodeCount: Array.isArray(raw?.nodes) ? raw.nodes.length : 0,
+        installed: Boolean(this.nodes.workflowById(workflowId)),
+      })
+    }
+    const value = {
+      source,
+      base,
+      version: String(manifest?.version ?? ''),
+      fetchedAt: nowIso(),
+      nodes,
+      workflows,
+      warnings,
+    }
+    this.repoCatalogCache.set(cacheKey, { at: Date.now(), value })
+    return value
+  }
+
+  /** Install one node from the repository into the custom node library. */
+  async installRepoNode(args = {}) {
+    const id = String(args?.id ?? '').trim()
+    if (id === '') throw new Error('缺少节点 id（id）')
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new Error(`节点 id 非法：${id}`)
+    const existing = this.nodes.nodeById(id)
+    if (existing) return { node: existing, installed: true, skipped: true, source: existing.source }
+    const { base, source } = this.repoTarget(args?.source)
+    const raw = await fetchJson(joinUrl(base, `nodes/${id}.json`), { timeoutMs: 15000, signal: this.abort.signal })
+    const def = validateNodeDef(raw, { where: `仓库节点 ${id}`, source: 'repo' })
+    if (def.executor?.kind === 'http' && this.state.proMode !== true) {
+      throw new Error(`节点「${def.nameZh || def.name}」是 HTTP 自定义节点，导入需要先打开「专业模式」（设置 → VCG 视觉控制生成器 → 专业模式）`)
+    }
+    const node = await this.nodes.saveCustom(def, { allowHttp: true })
+    this.repoCatalogCache.clear()
+    return { node, installed: true, skipped: false, source }
+  }
+
   listOutputs(args = {}) {
     const limit = positiveInt(args?.limit, 100, { min: 1, max: 500 })
     return { outputs: (this.state.outputs ?? []).slice(0, limit).map((output) => ({ ...output })) }
@@ -1027,6 +1294,9 @@ class VcgStudio {
       buildWorkflow: (args) => this.buildWorkflow(args),
       runWorkflow: (args) => this.runWorkflow(args),
       runNode: (args) => this.runNode(args),
+      debugWorkflow: (args) => this.debugWorkflow(args),
+      listRepoNodes: (args) => this.listRepoNodes(args),
+      installRepoNode: (args) => this.installRepoNode(args),
       listOutputs: (args) => this.listOutputs(args),
       readOutput: (args) => this.readOutput(args),
       openOutputDir: (args) => this.openOutputDir(args),
@@ -1080,6 +1350,8 @@ class VcgStudio {
           'list_nodes / sync_nodes（从 DSH_VCG_repo 节点仓库同步）/ import_node / remove_node 管理节点；' +
           'list_workflows 列出内置示例工作流；canvas_get / canvas_save 读写会话或项目画布；' +
           'build_workflow 用自然语言自动搭建工作流；run_workflow / run_node 运行整张工作流或单个节点；' +
+          'debug_workflow 只做完整性/模型可加载性/安全性校验（不生成内容）；' +
+          'list_repo_nodes / install_repo_node 浏览并安装 DSH_VCG_repo 节点；' +
           'list_projects / create_project / delete_project 管理 VCG 项目工作区（项目工作区中的对话默认使用 VCG 画布）；' +
           'list_outputs 查看生成的图片/视频。用户要求生成图片、视频或搭建视觉工作流时：先 build_workflow，再 run_workflow。',
         parameters: {
@@ -1101,6 +1373,9 @@ class VcgStudio {
                 'build_workflow',
                 'run_workflow',
                 'run_node',
+                'debug_workflow',
+                'list_repo_nodes',
+                'install_repo_node',
                 'canvas_get',
                 'canvas_save',
                 'list_projects',
@@ -1110,6 +1385,8 @@ class VcgStudio {
               ],
               description: '要执行的操作。',
             },
+            network: { type: 'boolean', description: 'debug_workflow：是否做网络探测（默认 true；false 仅离线静态校验）。' },
+            force: { type: 'boolean', description: 'list_repo_nodes：跳过 60 秒缓存强制刷新。' },
             prompt: { type: 'string', description: 'build_workflow：用户想要的图像/视频工作流需求描述。' },
             workflow: { type: 'object', additionalProperties: true, description: 'run_workflow / run_node / canvas_save：工作流对象（缺省时读取当前画布）。' },
             current: { type: 'object', additionalProperties: true, description: 'build_workflow：当前画布工作流（用于在已有基础上修改）。' },
@@ -1188,6 +1465,37 @@ class VcgStudio {
                 const value = await this.runNode({ key, workflow: args?.workflow, sessionId, baseDir: args?.baseDir, nodeId: args?.nodeId })
                 return { ok: value.result?.status !== 'error', ...value }
               }
+              case 'debug_workflow': {
+                const value = await this.debugWorkflow({ key, workflow: args?.workflow, sessionId, baseDir: args?.baseDir, network: args?.network })
+                return { ok: value.ok, ...value }
+              }
+              case 'list_repo_nodes': {
+                const value = await this.listRepoNodes({ source: args?.source, force: args?.force })
+                // Model-facing view stays compact; the UI RPC gets the full definitions.
+                return {
+                  ok: true,
+                  source: value.source,
+                  base: value.base,
+                  version: value.version,
+                  fetchedAt: value.fetchedAt,
+                  count: value.nodes.length,
+                  warnings: value.warnings,
+                  nodes: value.nodes.map((node) => ({
+                    id: node.id,
+                    name: node.nameZh || node.name,
+                    category: node.category,
+                    engine: node.engine,
+                    installed: node.installed,
+                    requiresPro: node.requiresPro,
+                    canImport: node.canImport,
+                    outputs: (node.outputs || []).length,
+                    inputs: (node.inputs || []).length,
+                  })),
+                  workflows: value.workflows,
+                }
+              }
+              case 'install_repo_node':
+                return { ok: true, ...(await this.installRepoNode({ id: args?.id, source: args?.source })) }
               case 'canvas_get':
                 return { ok: true, ...this.getCanvas({ key }) }
               case 'canvas_save': {

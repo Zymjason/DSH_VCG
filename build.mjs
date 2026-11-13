@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const pkg = JSON.parse(await readFile(join(here, 'package.json'), 'utf8'))
-const PARTS = ['core', 'canvas', 'settings', 'studio', 'panel', 'view', 'apply']
+const PARTS = ['core', 'canvas', 'settings', 'studio', 'panel', 'repo', 'view', 'apply']
 const pkgName = pkg.name
 
 const parts = []
@@ -26,7 +26,7 @@ for (const name of PARTS) {
   try {
     source = await readFile(file, 'utf8')
   } catch {
-    if (name === 'canvas' || name === 'settings' || name === 'studio' || name === 'panel') {
+    if (name === 'canvas' || name === 'settings' || name === 'studio' || name === 'panel' || name === 'repo') {
       console.warn(`[vcg build] missing part parts/${name}.js — skipping`)
       continue
     }

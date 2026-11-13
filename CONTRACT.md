@@ -308,3 +308,25 @@ sdk/loader.md                 如何从本仓库拉取节点包（raw URL / mani
 
 ### 11.7 节点 category
 严格取 core.js `NODE_CATEGORIES` 的 id：`input` `model` `latent` `sampling` `decode` `video` `utility` `custom`。
+
+## 12. 增强功能（2026-11-13，第二轮迭代）
+
+### 12.1 画布全屏
+- 会话内 VCG 画布与工作台画布均支持全屏：根元素加 `vcg-view-full` / `vcg-studio-canvas-panel-full`（`position:fixed;inset:0;z-index:80`），Esc 退出；进入/退出按钮用 `Glyph fit/close`。
+
+### 12.2 Debug 运行（只校验，不生成）
+- Host RPC `debugWorkflow`，参数 `{ key?, workflow?, sessionId?, baseDir?, network? }`（network 默认 true；false 仅离线静态校验）。
+- 返回 `{ ok, mode:'debug', key, baseDir, outputDir, network, provider, order, nodeCount, edgeCount, checks:[{group,level,label,detail}], summary:{passed,warned,failed,total}, startedAt, ms, note }`。
+- 检查分组：`schema` 结构 / `graph` 连线与拓扑 / `params` 参数 / `engine` 引擎与本地配置 / `model` 模型路由、API Key、/models 探测（不生成内容）/ `security` 输出目录、文件名、HTTP 节点（专业模式、URL、超时）。
+- 约束：绝不调用生图/生视频 API、绝不写输出文件；UI 为「Debug 运行」按钮 + 报告 Modal（`V.ui.DebugReport`）。
+- agent 工具新增 action `debug_workflow`（`network` 参数控制是否探测）。
+
+### 12.3 VCG 节点工作流仓库侧边栏
+- 新增第二个侧边栏图标（id/key `dsh-vcg-repo`，order 24）与主面板页 `V.NodeRepoPage`。
+- Host RPC：
+  - `listRepoNodes { source?: 'github'|'gitea'|'auto'|httpUrl, force? }` → `{ source, base, version, fetchedAt, nodes:[{...def, installed, installedSource, requiresPro, canImport}], workflows:[{id,name,description,nodeCount,installed}], warnings }`（60s 缓存）。
+  - `installRepoNode { id, source? }` → `{ node, installed, skipped?, source }`；`executor.kind="http"` 节点要求 proMode。
+- agent 工具新增 action `list_repo_nodes`（紧凑摘要）/ `install_repo_node`。
+- 仓库地址仍由设置页 `nodeRepo.githubBase/giteaBase` 配置；页面只读展示并提供 source 切换与刷新。
+- 客户端 part：`parts/repo.js` → `V.NodeRepoPage`、`V.RepoPanelIcon`（build.mjs 顺序：core, canvas, settings, studio, panel, repo, view, apply）。
+- `V.nav.openPanel(panelId)` 通过 `ctx.layout.selectPanel` 注入，供页面互跳。
